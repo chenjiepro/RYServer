@@ -249,4 +249,831 @@ public:
 	//字串输出
 	virtual bool TraceString(LPCTSTR pszString, enTraceLevel TraceLevel) = NULL;
 };
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IServiceModule INTERFACE_VERSION(1,1)
+static const GUID IID_IServiceModule = { 0x49084dea, 0x4420, 0x4bea, 0x0080, 0x64, 0xfa, 0x37, 0xe3, 0x42, 0xf3, 0x1c };
+#else
+#define VER_IServiceModule INTERFACE_VERSION(1,1)
+static const GUID IID_IServiceModule = { 0x05980504, 0xa2f2, 0x4b0f, 0x009b, 0x54, 0x51, 0x54, 0x1e, 0x05, 0x5c, 0xff };
+#endif
+
+//模块服务
+interface IServiceModule : public IUnknownEx
+{
+	//启动服务
+	virtual bool StartService() = NULL;
+	//停止服务
+	virtual bool ConcludeService() = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IAsynchronismEngine INTERFACE_VERSION(1,1)
+static const GUID IID_IAsynchronismEngine = { 0xe03ad33d, 0xb285, 0x48ea, 0x86, 0x70, 0x0a, 0x95, 0x55, 0x92, 0x07, 0xe1 };
+#else
+#define VER_IAsynchronismEngine INTERFACE_VERSION(1,1)
+static const GUID IID_IAsynchronismEngine = { 0xc7a13074, 0x75c5, 0x4b8e, 0xb5, 0x4b, 0xee, 0x0e, 0xec, 0xfe, 0xb9, 0xeb };
+#endif
+
+//异步引擎
+interface IAsynchronismEngine : public IServiceModule
+{
+	//配置接口
+public:
+	//队列负荷
+	//virtual bool GetBurthenInfo(tagBurthenInfo & BurthenInfo) = NULL;
+	//设置模块
+	virtual bool SetAsynchronismSink(IUnknownEx *pIUnknowEx) = NULL;
+
+	//投递接口
+public:
+	//投递数据
+	virtual bool PostAsynchronismData(WORD wIdentifier, VOID *pData, WORD wDataSize) = NULL;
+	//投递数据
+	//virtual bool PostAsynchronismData(WORD wIdentifier, tagDataBuffer DataBuffer[], WORD wDataCount) = NULL;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IAsynchronismEngineSink INTERFACE_VERSION(1,1)
+static const GUID IID_IAsynchronismEngineSink = { 0x55215681, 0x858a, 0x46f6, 0x0084, 0xec, 0x84, 0x9e, 0xc8, 0x7d, 0x82, 0x35 };
+#else
+#define VER_IAsynchronismEngineSink INTERFACE_VERSION(1,1)
+static const GUID IID_IAsynchronismEngineSink = { 0x2edf5c9e, 0x2cac, 0x461d, 0x00a7, 0x82, 0x2e, 0x2f, 0xe1, 0x91, 0x80, 0xf8 };
+#endif
+
+//异步钩子
+interface IAsynchronismEngineSink : IUnknownEx
+{
+	//启动事件
+	virtual bool OnAsynchronismEngineStart() = NULL;
+	//停止事件
+	virtual bool OnAsynchronismEngineConclude() = NULL;
+	//异步数据
+	virtual bool OnAsynchronismEngineData(WORD wIdentifier, VOID *pData, WORD wDataSize) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IDataBase INTERFACE_VERSION(1,1)
+static const GUID IID_IDataBase = { 0x7fbbbffa, 0xedf4, 0x43d2, 0x008a, 0xb7, 0x28, 0x87, 0x3b, 0xd0, 0xf5, 0x3f };
+#else
+#define VER_IDataBase INTERFACE_VERSION(1,1)
+static const GUID IID_IDataBase = { 0xa2e38a78, 0x1e4f, 0x4de4, 0x00a5, 0xd1, 0xb9, 0x19, 0x9b, 0xce, 0x41, 0xae };
+#endif
+
+//数据库接口
+interface IDataBase : public IUnknownEx
+{
+	//接口连接
+public:
+	//打开连接
+	virtual VOID OpenConnection() = NULL;
+	//关闭连接
+	virtual VOID CloseConnection() = NULL;
+	//连接信息
+	virtual bool SetConnectionInfo(DWORD dwDBAddr, WORD wPort, LPCTSTR szDBName, LPCTSTR szUser, LPCTSTR szPassword) = NULL;
+	//连接信息
+	virtual bool SetConnectionInfo(LPCTSTR dwDBAddr, WORD wPort, LPCTSTR szDBName, LPCTSTR szUser, LPCTSTR szPassword) = NULL;
+
+	//参数接口
+public:
+	//清除参数
+	virtual VOID ClearParameters() = NULL;
+	//获取参数
+	virtual VOID GetParameters(LPCTSTR pszParamName, CDBVarValue & DBVarValue) = NULL;
+	//插入参数
+	virtual VOID AddParameters(LPCTSTR pszName, DataTypeEnum Type, ParameterDirectionEnum Direction, LONG Size, CDBVarValue & DBVarValue) = NULL;
+
+	//控制接口
+public:
+	//切换记录
+	virtual VOID NextRecordset() = NULL;
+	//关闭记录
+	virtual VOID CloseRecordset() = NULL;
+	//绑定对象
+	virtual VOID BindToRecordset(CADORecordBinding * pBind) = NULL;
+
+	//记录接口
+public:
+	//往下移动
+	virtual VOID MoveToNext() = NULL;
+	//移到开头
+	virtual VOID MoveToFirst() = NULL;
+	//是否结束
+	virtual bool IsRecordsetEnd() = NULL;
+	//获取数目
+	virtual LONG GetRecordCount() = NULL;
+	//返回数值
+	virtual LONG GetReturnValue() = NULL;
+	//获取数据
+	virtual VOID GetRecordsetValue(LPCTSTR pszItem, CDBVarValue & DBVarValue) = NULL;
+
+	//控制接口
+public:
+	//存储过程
+	virtual VOID ExecuteProcess(LPCTSTR pszSPName, bool bRecordset) = NULL;
+	//执行语句
+	virtual VOID ExecuteSentence(LPCTSTR pszCommand, bool bRecordset) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IDataBaseEngine INTERFACE_VERSION(1,1)
+static const GUID IID_IDataBaseEngine = { 0x3c56956d, 0x1690, 0x4c22, 0x88, 0x34, 0x9e, 0xb9, 0xd0, 0x93, 0x66, 0x4c };
+#else
+#define VER_IDataBaseEngine INTERFACE_VERSION(1,1)
+static const GUID IID_IDataBaseEngine = { 0x47b5a119, 0x1676, 0x49a3, 0xbe, 0xae, 0xca, 0x27, 0xeb, 0x59, 0x97, 0x22 };
+#endif
+
+//数据库引擎
+interface IDataBaseEngine : IServiceModule
+{
+	//信息接口
+public:
+	//引擎负荷
+	//virtual bool GetBurthenInfo(tagBurthenInfo & BurthenInfo) = NULL;
+
+	//配置接口
+public:
+	//配置模块
+	virtual bool SetDataBaseEngineSink(IUnknownEx * pIUnknownEx) = NULL;
+	//配置模块
+	virtual bool SetDataBaseEngineSink(IUnknownEx * pIUnknownEx[], WORD wSizeCount) = NULL;
+
+	//请求控制
+public:
+	//控制事件
+	virtual bool PostDataBaseControl(WORD wControlID, VOID * pData, WORD wDataSize) = NULL;
+	//请求事件
+	virtual bool PostDataBaseRequest(WORD wRequestID, WORD wControlID, VOID * pData, WORD wDataSize) = NULL;
+	//延期请求
+	virtual bool DeferDataBaseRequest(WORD wRequestID, WORD wControlID, VOID * pData, WORD wDataSize) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IDataBaseEngineSink INTERFACE_VERSION(1,1)
+static const GUID IID_IDataBaseEngineSink = { 0x295c258b, 0xfad0, 0x41ac, 0x0099, 0x19, 0xc5, 0x64, 0x54, 0xec, 0x3a, 0xf9 };
+#else
+#define VER_IDataBaseEngineSink INTERFACE_VERSION(1,1)
+static const GUID IID_IDataBaseEngineSink = { 0x0ed26ed6, 0x69d7, 0x4f5b, 0x00b0, 0xca, 0x17, 0xae, 0xab, 0xba, 0x06, 0xdf };
+#endif
+
+//数据库钩子
+interface IDataBaseEngineSink : public IUnknownEx
+{
+	//系统事件
+public:
+	//启动事件
+	virtual bool OnDataBaseEngineStart(IUnknownEx * pIUnknownEx) = NULL;
+	//停止事件
+	virtual bool OnConcludeDataBaseEngine(IUnknownEx * pIUnknownEx) = NULL;
+
+	//内核事件
+public:
+	//时间事件
+	virtual bool OnDataBaseEngineTimer(DWORD dwTimerID, WPARAM dwBindParameter) = NULL;
+	//控制事件
+	virtual bool OnDataBaseEngineControl(WORD wControlID, VOID * pData, WORD wDataSize) = NULL;
+	//请求事件
+	virtual bool OnDataBaseEngineRequest(WORD wRequestID, WORD wControlID, VOID * pData, WORD wDataSize) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IUDPNetworkEngine INTERFACE_VERSION(1,1)
+static const GUID IID_IUDPNetworkEngine = { 0xbbbd895a, 0x0a97, 0x4fae, 0x8e, 0x38, 0x10, 0x76, 0xa7, 0xc7, 0x4d, 0x7f };
+#else
+#define VER_IUDPNetworkEngine INTERFACE_VERSION(1,1)
+static const GUID IID_IUDPNetworkEngine = { 0x8d138a9b, 0xa97d, 0x4d51, 0x9d, 0x6c, 0xd8, 0x6e, 0xa1, 0x84, 0x45, 0x2e };
+#endif
+
+//网络引擎UDP
+interface IUDPNetworkEngine : public IServiceModule
+{
+	//信息接口
+public:
+	//配置端口
+	virtual WORD GetServicePort() = NULL;
+	//当前端口
+	virtual WORD GetCurrentPort() = NULL;
+
+	//配置接口
+public:
+	//设置接口
+	virtual bool SetUDPNetworkEngineEvent(IUnknownEx * pIUnknownEx) = NULL;
+	//设置参数
+	virtual bool SetServiceParameter(WORD wServicePort, WORD wMaxConnect) = NULL;
+
+	//发送接口
+public:
+	//发送函数
+	virtual bool SendData(DWORD dwSocketID, WORD wMainCmdID, WORD wSubCmdID) = NULL;
+	//发送函数
+	virtual bool SendData(DWORD dwSocketID, WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize) = NULL;
+
+	//控制接口
+public:
+	//关闭连接
+	virtual bool CloseSocket(DWORD dwSocketID) = NULL;
+	//设置关闭
+	virtual bool ShutDownSocket(DWORD dwSocketID) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_ITCPNetworkEngine INTERFACE_VERSION(1,1)
+static const GUID IID_ITCPNetworkEngine = { 0x9aa6931f, 0x417f, 0x43a7, 0x86, 0xab, 0x56, 0x10, 0xe4, 0x34, 0x1c, 0x17 };
+#else
+#define VER_ITCPNetworkEngine INTERFACE_VERSION(1,1)
+static const GUID IID_ITCPNetworkEngine = { 0x7747f683, 0xc0da, 0x4588, 0x89, 0xcc, 0x15, 0x93, 0xac, 0xc0, 0x44, 0xc8 };
+#endif
+
+//网络引擎TCP
+interface ITCPNetworkEngine : public IServiceModule
+{
+	//信息接口
+public:
+	//配置端口
+	virtual WORD GetServicePort() = NULL;
+	//当前端口
+	virtual WORD GetCurrentPort() = NULL;
+
+	//配置接口
+public:
+	//设置接口
+	virtual bool SetUDPNetworkEngineEvent(IUnknownEx * pIUnknownEx) = NULL;
+	//设置参数
+	virtual bool SetServiceParameter(WORD wServicePort, WORD wMaxConnect) = NULL;
+
+	//发送接口
+public:
+	//发送函数
+	virtual bool SendData(DWORD dwSocketID, WORD wMainCmdID, WORD wSubCmdID) = NULL;
+	//发送函数
+	virtual bool SendData(DWORD dwSocketID, WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize) = NULL;
+	//批量发送
+	virtual bool SendDataBatch(WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize, BYTE cbBatchMask) = NULL;
+
+	//控制接口
+public:
+	//关闭连接
+	virtual bool CloseSocket(DWORD dwSocketID) = NULL;
+	//设置关闭
+	virtual bool ShutDownSocket(DWORD dwSocketID) = NULL;
+	//允许群发
+	virtual bool AllowBatchSend(DWORD dwSocketID, bool bAllowBatch, BYTE cbBatchMask) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_ITCPSocketService INTERFACE_VERSION(1,1)
+static const GUID IID_ITCPSocketService = { 0x0f8a5c14, 0xab92, 0x467c, 0xb6, 0x7b, 0x6d, 0x8a, 0xcf, 0x64, 0x52, 0xd7 };
+#else
+#define VER_ITCPSocketService INTERFACE_VERSION(1,1)
+static const GUID IID_ITCPSocketService = { 0x709a4449, 0xad77, 0x4b3d, 0xb4, 0xd6, 0x8d, 0x0b, 0x28, 0x65, 0xec, 0xae };
+#endif
+
+//网络接口
+interface ITCPSocketService : public IServiceModule
+{
+	//配置接口
+public:
+	//配置函数
+	virtual bool SetServiceID(WORD wServiceID) = NULL;
+	//设置接口
+	virtual bool SetTCPSocketEvent(IUnknownEx * pIUnknownEx) = NULL;
+
+	//功能接口
+public:
+	//关闭连接
+	virtual bool CloseSocket() = NULL;
+	//连接地址
+	virtual bool Connect(DWORD dwServerIP, WORD wPort) = NULL;
+	//连接地址
+	virtual bool Connect(LPCTSTR dwServerIP, WORD wPort) = NULL;
+	//发送函数
+	virtual bool SendData(WORD wMainCmdID, WORD wSubCmdID) = NULL;
+	//发送函数
+	virtual bool SendData(WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IWEBSocketService INTERFACE_VERSION(1,1)
+static const GUID IID_IWEBSocketService = { 0x5502d590, 0xc446, 0x440d, 0xa1, 0x95, 0x3e, 0xda, 0x11, 0xf8, 0x0d, 0x64 };
+#else
+#define VER_IWEBSocketService INTERFACE_VERSION(1,1)
+static const GUID IID_IWEBSocketService = { 0x91052ff2, 0xeb29, 0x40b9, 0xb2, 0xa2, 0x8a, 0xa2, 0x98, 0x36, 0x2c, 0x84 };
+#endif
+
+//网络接口
+interface IWEBSocketService : public IServiceModule
+{
+	//配置接口
+public:
+	//配置函数
+	virtual bool SetServiceID(WORD wServiceID) = NULL;
+	//设置接口
+	virtual bool SetWEBSocketEvent(IUnknownEx * pIUnknownEx) = NULL;
+
+	//功能接口
+public:
+	//关闭连接
+	virtual bool CloseSocket(BYTE cbShutReason) = NULL;
+	//连接操作
+	virtual bool ConnectScoket(LPCTSTR pszURL, WORD wPort) = NULL;
+	//发送请求
+	virtual bool SendRequestData(VOID * pData, WORD wDataSize) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_ITimerEngine INTERFACE_VERSION(1,1)
+static const GUID IID_ITimerEngine = { 0xc90cfc81, 0xee01, 0x4654, 0x008c, 0x9a, 0x58, 0xa9, 0x4b, 0x78, 0x76, 0xb6 };
+#else
+#define VER_ITimerEngine INTERFACE_VERSION(1,1)
+static const GUID IID_ITimerEngine = { 0x496401ae, 0x6fb0, 0x4e9f, 0x0090, 0x98, 0x44, 0x9d, 0x9c, 0xb2, 0xbd, 0x97 };
+#endif
+
+//定时器引擎
+interface ITimerEngine : public IServiceModule
+{
+	//配置接口
+public:
+	//设置接口
+	virtual bool SetTimerEngineEvent(IUnknownEx * pIUnknownEx) = NULL;
+
+	//功能接口
+public:
+	//设置定时器
+	virtual bool SetTimer(DWORD dwTimerID, DWORD dwElapse, DWORD dwRepeat, WPARAM dwBindParameter) = NULL;
+	//设置定时器
+	virtual bool SetTimer(DWORD dwTimerID) = NULL;
+	//删除定时器
+	virtual bool KillTimer(DWORD dwTimerID) = NULL;
+	//删除所有定时器
+	virtual bool KillAllTimer() = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_ITimerEngineEvent INTERFACE_VERSION(1,1)
+static const GUID IID_ITimerEngineEvent = { 0x995c4868, 0x81b8, 0x4c52, 0x00a2, 0x15, 0x71, 0x97, 0x0d, 0x16, 0xaf, 0xb7 };
+#else
+#define VER_ITimerEngineEvent INTERFACE_VERSION(1,1)
+static const GUID IID_ITimerEngineEvent = { 0xeb78a125, 0x62fc, 0x4811, 0x00b6, 0xf2, 0x59, 0x26, 0x88, 0x04, 0xc3, 0x02 };
+#endif
+
+//定时器事件
+interface ITimerEngineEvent : public IUnknownEx
+{
+	//接口定义
+public:
+	//事件事件
+	virtual bool OnEventTimer(DWORD dwTimerID, WPARAM dwBindParameter) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IDataBaseEngineEvent INTERFACE_VERSION(1,1)
+static const GUID IID_IDataBaseEngineEvent = { 0x344ea7f2, 0x633b, 0x4580, 0x0080, 0xa9, 0xa9, 0x4a, 0x46, 0x12, 0xce, 0x73 };
+#else
+#define VER_IDataBaseEngineEvent INTERFACE_VERSION(1,1)
+static const GUID IID_IDataBaseEngineEvent = { 0xc29c7131, 0xe84b, 0x4553, 0x00a8, 0x38, 0x12, 0xee, 0x07, 0xdd, 0x0e, 0xa3 };
+#endif
+
+//数据库事件
+interface IDataBaseEngineEvent : public IUnknownEx
+{
+	//接口定义
+public:
+	//数据库结果
+	virtual bool OnEventDataBaseResult(WORD wRequestID, DWORD dwContextID, VOID * pData, WORD wDataSize) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_ITCPSocketEvent INTERFACE_VERSION(1,1)
+static const GUID IID_ITCPSocketEvent = { 0x0400c2de, 0x69b1, 0x4136, 0x00af, 0x30, 0x2d, 0x2d, 0x1e, 0x35, 0x51, 0x24 };
+#else
+#define VER_ITCPSocketEvent INTERFACE_VERSION(1,1)
+static const GUID IID_ITCPSocketEvent = { 0x6f5bdb91, 0xf72a, 0x425d, 0x0087, 0x03, 0x39, 0xbc, 0xf7, 0x1e, 0x0b, 0x03 };
+#endif
+
+//网络事件
+interface ITCPSocketEvent : IUnknownEx
+{
+	//连接事件
+	virtual bool OnEventTCPSocketLink(WORD wServiceID, INT nErrorCode) = NULL;
+	//关闭事件
+	virtual bool OnEventTCPSocketShut(WORD wServiceID, BYTE cbShutReason) = NULL;
+	//读取事件
+	virtual bool OnEventTCPSocketRead(WORD wServiceID, TCP_Command Command, VOID * pData, WORD wDataSize) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IWEBSocketEvent INTERFACE_VERSION(1,1)
+static const GUID IID_IWEBSocketEvent = { 0x9f64bb2b, 0xb60b, 0x4ef9, 0xa2, 0xb1, 0x49, 0xca, 0x87, 0xc9, 0x19, 0xe4 };
+#else
+#define VER_IWEBSocketEvent INTERFACE_VERSION(1,1)
+static const GUID IID_IWEBSocketEvent = { 0xabb2a528, 0xcc16, 0x4b67, 0xbd, 0x7b, 0x28, 0xa6, 0xce, 0x88, 0x8a, 0x33 };
+#endif
+
+//网络事件
+interface IWEBSocketEvent : IUnknownEx
+{
+	//状态接口
+public:
+	//连接消息
+	virtual bool OnEventWEBSocketLink(WORD wServiceID, WORD wRequestID, INT nErrorCode) = NULL;
+	//关闭消息
+	virtual bool OnEventWEBSocketShut(WORD wServiceID, WORD wRequestID, BYTE cbShutReason) = NULL;
+
+	//数据接口
+public:
+	//数据包流
+	virtual bool OnEventWEBSocketMain(WORD wServiceID, WORD wRequestID, VOID * pcbMailData, WORD wStreamSize) = NULL;
+	//数据包头
+	virtual bool OnEventWEBSocketHead(WORD wServiceID, WORD wRequestID, VOID * pcbHeadData, WORD wHeadSize, INT nStatusCode) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_ITCPNetworkEngineEvent INTERFACE_VERSION(1,1)
+static const GUID IID_ITCPNetworkEngineEvent = { 0x9759ffb3, 0x5bec, 0x4199, 0x0091, 0xef, 0x49, 0x5b, 0xca, 0xdc, 0x00, 0x98 };
+#else
+#define VER_ITCPNetworkEngineEvent INTERFACE_VERSION(1,1)
+static const GUID IID_ITCPNetworkEngineEvent = { 0xb7e6da53, 0xfca5, 0x4d90, 0x0085, 0x48, 0xfe, 0x05, 0xf6, 0xb4, 0xc0, 0xef };
+#endif
+
+//网络事件
+interface ITCPNetworkEngineEvent : public IUnknownEx
+{
+	//接口定义
+public:
+	//应答事件
+	virtual bool OnEventTCPNetworkBind(DWORD dwSocketID, DWORD dwClientAddr) = NULL;
+	//关闭事件
+	virtual bool OnEventTCPNetworkShut(DWORD dwSocketID, DWORD dwClientAddr, DWORD dwActiveTime) = NULL;
+	//读取事件
+	virtual bool OnEventTCPNetworkRead(DWORD dwSocketID, TCP_Command Command, VOID * pData, DWORD dwDataSize) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IAttemperEngine INTERFACE_VERSION(1,1)
+static const GUID IID_IAttemperEngine = { 0x4d5d2424, 0x40fd, 0x4747, 0x86, 0xd8, 0x8f, 0xca, 0x6b, 0x96, 0xea, 0x0b };
+#else
+#define VER_IAttemperEngine INTERFACE_VERSION(1,1)
+static const GUID IID_IAttemperEngine = { 0x0b070b2c, 0x9d72, 0x42d2, 0xa5, 0x70, 0xba, 0x2c, 0xbf, 0x6f, 0xbb, 0x1c };
+#endif
+
+//调度引擎
+interface IAttemperEngine : IServiceModule
+{
+	//配置接口
+public:
+	//网络接口
+	virtual bool SetNetworkEngine(IUnknownEx * pIUnknownEx) = NULL;
+	//回调接口
+	virtual bool SetAttemperEngineSkin(IUnknownEx * pIUnknownEx) = NULL;
+
+	//控制事件
+public:
+	//自定事件
+	virtual bool OnEventCustom(WORD wRequestID, VOID * pData, WORD wDataSize) = NULL;
+	//控制事件
+	virtual bool OnEventControl(WORD wControlID, VOID * pData, WORD wDataSize) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _UNICODE
+#define VER_IAttemperEngineSink INTERFACE_VERSION(1,1)
+static const GUID IID_IAttemperEngineSink = { 0x133d1f30, 0x54ce, 0x4360, 0x0084, 0x50, 0x87, 0x29, 0xe0, 0x95, 0xaa, 0xbb };
+#else
+#define VER_IAttemperEngineSink INTERFACE_VERSION(1,1)
+static const GUID IID_IAttemperEngineSink = { 0x831b9001, 0x4450, 0x45dd, 0x0091, 0x37, 0x0d, 0x26, 0x16, 0xe3, 0x75, 0x32 };
+#endif
+
+//调度钩子
+interface IAttemperEngineSkin : public IUnknownEx
+{
+	//异步接口
+public:
+	//启动事件
+	virtual bool OnAttemperEngineStart(IUnknownEx * pIUnknownEx) = NULL;
+	//停止事件
+	virtual bool OnAttemperEngineConclude(IUnknownEx * pIUnknownEx) = NULL;
+
+	//事件接口
+public:
+	//控制事件
+	virtual bool OnEventControl(WORD wIdentifier, VOID * pData, WORD wDataSize) = NULL;
+	//自定事件
+	virtual bool OnEventAttemperData(WORD wRequestID, VOID * pData, WORD wDataSize) = NULL;
+
+	//内核事件
+public:
+	//时间事件
+	virtual bool OnEventTimer(DWORD dwTimerID, WPARAM wBindParam) = NULL;
+	//数据库事件
+	virtual bool OnEventDataBase(WORD wRequestID, DWORD dwContextID, VOID * pData, WORD wDataSize) = NULL;
+
+	//连接事件
+public:
+	//连接事件
+	virtual bool OnEventTCPSocketLink(WORD wServiceID, INT nErrorCode) = NULL;
+	//关闭事件
+	virtual bool OnEventTCPSocketShut(WORD wServiceID, BYTE cbShutReason) = NULL;
+	//读取事件
+	virtual bool OnEventTCPSocketRead(WORD wServiceID, TCP_Command Command, VOID * pData, WORD wDataSize) = NULL;
+
+	//网络事件
+public:
+	//应答事件
+	virtual bool OnEventTCPNetworkBind(DWORD dwSocketID, DWORD dwClientAddr) = NULL;
+	//关闭事件
+	virtual bool OnEventTCPNetworkShut(DWORD dwSocketID, DWORD dwClientAddr, DWORD dwActiveTime) = NULL;
+	//读取事件
+	virtual bool OnEventTCPNetworkRead(DWORD dwSocketID, TCP_Command Command, VOID * pData, DWORD dwDataSize) = NULL;
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+//组件辅助类
+
+DECLARE_MODULE_HELPER(DataBase, KERNEL_ENGINE_DLL_NAME, "CreateDataBase")
+DECLARE_MODULE_HELPER(TimerEngine, KERNEL_ENGINE_DLL_NAME, "CreateTimerEngine")
+DECLARE_MODULE_HELPER(DataBaseEngine, KERNEL_ENGINE_DLL_NAME, "CreateDataBaseEngine")
+DECLARE_MODULE_HELPER(AttemperEngine, KERNEL_ENGINE_DLL_NAME, "CreateAttemperEngine")
+DECLARE_MODULE_HELPER(TCPSocketService, KERNEL_ENGINE_DLL_NAME, "CreateTCPSocketService")
+DECLARE_MODULE_HELPER(WEBSocketService, KERNEL_ENGINE_DLL_NAME, "CreateWEBSocketService")
+DECLARE_MODULE_HELPER(TCPNetworkEngine, KERNEL_ENGINE_DLL_NAME, "CreateTCPNetworkEngine")
+DECLARE_MODULE_HELPER(UDPNetworkEngine, KERNEL_ENGINE_DLL_NAME, "CreateUDPNetworkEngine")
+DECLARE_MODULE_HELPER(AsynchronismEngine, KERNEL_ENGINE_DLL_NAME, "CreateAsynchronismEngine")
+DECLARE_MODULE_HELPER(TraceServiceManager, KERNEL_ENGINE_DLL_NAME, "CreateTraceServiceManager")
+
+//导出文件
+#ifndef KERNEL_ENGINE_DLL
+#include "DataBaseAide.h"
+#include "TraceService.h"
+#include "ProcessException.h"
+#endif
+
+//类模板的具体实现效果演示DataBse
+//组件创建函数
+//typedef VOID * (ModuleCreateProc)(REFGUID Gudi, DWORD dwInterfaceVer);
+//
+////组件辅助类模板
+//class CTempldateHelper1
+//{
+//	//接口属性
+//public:
+//	REFGUID							m_Guid;								//接口标识
+//	const DWORD						m_dwVersion;						//接口版本
+//
+//	//组件属性
+//public:
+//	CHAR							m_szCreateProc[64];					//创建函数
+//	TCHAR							m_szModuleDllName[MAX_PATH];		//组件名字
+//
+//	//内核变量
+//public:
+//	HINSTANCE						m_hDllInstance;						//DLL 句柄
+//	IDataBase *						m_pIModeluInterface;				//模块接口
+//
+//	//辅助变量
+//public:
+//	TCHAR							m_szDescribe[128];					//错误描述
+//
+//	//函数定义
+//public:
+//	//构造函数
+//	CTempldateHelper1(REFGUID Guid, DWORD dwVersion);
+//	//构造函数
+//	CTempldateHelper1(REFGUID Guid, DWORD dwVersion, LPCTSTR pszModuleDll, LPCSTR pszCreateProc);
+//	//析构函数
+//	virtual ~CTempldateHelper1();
+//
+//	//管理函数
+//public:
+//	//释放组件
+//	bool CloseInstance();
+//	//创建函数
+//	bool CreateInstance();
+//
+//	//配置函数
+//public:
+//	//创建信息
+//	VOID SetModuleCreateInfo(LPCTSTR pszModuleDllName, LPCSTR pszCreateProc);
+//
+//	//辅助函数
+//public:
+//	//获取错误
+//	inline LPCTSTR GetErrorDescribe() const;
+//	//指针重载
+//	inline IDataBase * operator->() const;
+//	//获取接口
+//	inline IDataBase * GetInterface() const;
+//};
+//
+////////////////////////////////////////////////////////////////////////////////////
+//// CTempldateHelper<IModeluInterface> 外联函数
+//
+//
+//CTempldateHelper1::CTempldateHelper1(REFGUID Guid, DWORD dwVersion) : m_dwVersion(dwVersion), m_Guid(Guid)
+//{
+//	//辅助变量
+//	m_szDescribe[0] = 0;
+//
+//	//内核信息
+//	m_hDllInstance = NULL;
+//	m_pIModeluInterface = NULL;
+//
+//	//组件属性
+//	ZeroMemory(m_szCreateProc, sizeof(m_szCreateProc));
+//	ZeroMemory(m_szModuleDllName, sizeof(m_szModuleDllName));
+//
+//	return;
+//}
+//
+////构造函数
+//
+//CTempldateHelper1::CTempldateHelper1(REFGUID Guid, DWORD dwVersion, LPCTSTR pszModuleDll, LPCSTR pszCreateProc) : m_dwVersion(dwVersion), m_Guid(Guid)
+//{
+//	//辅助变量
+//	m_szDescribe[0] = 0;
+//
+//	//内核信息
+//	m_hDllInstance = NULL;
+//	m_pIModeluInterface = NULL;
+//
+//	//组件属性
+//	lstrcpynA(m_szCreateProc, pszCreateProc, CountArray(m_szCreateProc));
+//	lstrcpyn(m_szModuleDllName, pszModuleDll, CountArray(m_szModuleDllName));
+//
+//	return;
+//}
+//
+////析构函数
+//CTempldateHelper1::~CTempldateHelper1()
+//{
+//	CloseInstance();
+//}
+//
+////创建组件
+//bool CTempldateHelper1::CreateInstance()
+//{
+//	//释放组件
+//	CloseInstance();
+//
+//	//创建组件
+//	try
+//	{
+//		//效验参数
+//		ASSERT(m_szCreateProc[0] != 0);
+//		ASSERT(m_szModuleDllName[0] != 0);
+//
+//		//加载模块
+//		m_hDllInstance = AfxLoadLibrary(m_szModuleDllName);
+//		if (m_hDllInstance == NULL)
+//		{
+//			_sntprintf(m_szDescribe, CountArray(m_szDescribe), TEXT("“%s”模块加载失败"), m_szModuleDllName);
+//			return false;
+//		}
+//
+//		//寻找函数
+//		ModuleCreateProc * CreateProc = (ModuleCreateProc *)GetProcAddress(m_hDllInstance, m_szCreateProc);
+//		if (CreateProc == NULL)
+//		{
+//			_sntprintf(m_szDescribe, CountArray(m_szDescribe), TEXT("找不到组件创建函数“%s”"), m_szCreateProc);
+//			return false;
+//		}
+//
+//		//创建组件
+//		m_pIModeluInterface = (IDataBase *)CreateProc(m_Guid, m_dwVersion);
+//		if (m_pIModeluInterface == NULL)
+//		{
+//			_sntprintf(m_szDescribe, CountArray(m_szDescribe), TEXT("调用函数“%s”生成对象失败"), m_szCreateProc);
+//			return false;
+//		}
+//	}
+//	catch (LPCTSTR pszError)
+//	{
+//		_sntprintf(m_szDescribe, CountArray(m_szDescribe), TEXT("由于“%s”，组件创建失败"), pszError);
+//		return false;
+//	}
+//	catch (...)
+//	{
+//		_sntprintf(m_szDescribe, CountArray(m_szDescribe), TEXT("组件创建函数“%s”产生未知异常错误，组件创建失败"), m_szCreateProc);
+//		return false;
+//	}
+//
+//	return true;
+//}
+//
+////释放组件
+//bool CTempldateHelper1::CloseInstance()
+//{
+//	//设置变量
+//	m_szDescribe[0] = 0;
+//
+//	//销毁对象
+//	if (m_pIModeluInterface != NULL)
+//	{
+//		m_pIModeluInterface->Release();
+//		m_pIModeluInterface = NULL;
+//	}
+//
+//	//释放 DLL
+//	if (m_hDllInstance != NULL)
+//	{
+//		AfxFreeLibrary(m_hDllInstance);
+//		m_hDllInstance = NULL;
+//	}
+//
+//	return true;
+//}
+//
+////创建信息
+//VOID CTempldateHelper1::SetModuleCreateInfo(LPCTSTR pszModuleDllName, LPCSTR pszCreateProc)
+//{
+//	//设置信息
+//	lstrcpynA(m_szCreateProc, pszCreateProc, CountArray(m_szCreateProc));
+//	lstrcpyn(m_szModuleDllName, pszModuleDllName, CountArray(m_szModuleDllName));
+//
+//	return;
+//}
+//
+////////////////////////////////////////////////////////////////////////////////////
+//// CTempldateHelper<IModeluInterface> 内联函数
+//
+////获取描述
+//inline LPCTSTR CTempldateHelper1::GetErrorDescribe() const
+//{
+//	return m_szDescribe;
+//}
+//
+////指针重载
+//inline IDataBase * CTempldateHelper1::operator->() const
+//{
+//	return GetInterface();
+//}
+//
+////获取接口
+//
+//inline IDataBase * CTempldateHelper1::GetInterface() const
+//{
+//	return m_pIModeluInterface;
+//}
+////一个宏定义后的效果 调用创建组件函数就得到了一个含有CDataBase 接口的辅助类
+////类模板中有指针重载 就是通过重载指针调用CDataBase 接口的函数
+//class CDataBaseHelper : public CTempldateHelper1								\
+//{																											\
+//public:																										\
+//		CDataBaseHelper() : CTempldateHelper1(IID_IDataBase,												\
+//		VER_IDataBase, TEXT("KernelEngineD.dll"), "CreateDataBase") { }										\
+//};
+//
+//
+//extern "C" __declspec(dllexport) VOID * CreateDataBase(REFGUID Guid, DWORD dwInterfaceVer)		\
+//{																											\
+//	CDataBase * pDataBase = NULL;																	\
+//	try																										\
+//	{																										\
+//		pDataBase = new CDataBase();																\
+//		if (pDataBase == NULL) throw TEXT("创建失败");													\
+//		VOID * pObject = pDataBase->QueryInterface(Guid, dwInterfaceVer);									\
+//		if (pObject == NULL) throw TEXT("接口查询失败");														\
+//		return pObject;																						\
+//	}																										\
+//	catch (...) {}																							\
+//	SafeDelete(pDataBase);																				\
+//	return NULL;																							\
+//}
+
+
 #endif
