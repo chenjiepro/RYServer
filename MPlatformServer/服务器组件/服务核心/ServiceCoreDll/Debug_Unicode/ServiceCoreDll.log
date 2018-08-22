@@ -1,18 +1,18 @@
-﻿生成启动时间为 2018/8/20 18:12:01。
-     1>项目“F:\MyProject\RYService\MPlatformServer\服务器组件\服务核心\ServiceCoreDll\ServiceCoreDll.vcxproj”在节点 2 上(Rebuild 个目标)。
+﻿生成启动时间为 2018/8/22 17:17:03。
+     1>项目“F:\MyProject\RYServer\MPlatformServer\服务器组件\服务核心\ServiceCoreDll\ServiceCoreDll.vcxproj”在节点 2 上(Rebuild 个目标)。
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _WINDOWS /D SERVICECOREDLL_EXPORTS /D SERVICE_CORE_DLL /D _WINDLL /D _UNICODE /D UNICODE /D _AFXDLL /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yc"stdafx.h" /Fp"Debug_Unicode\ServiceCoreD.pch" /Fo"Debug_Unicode\\" /Fd"Debug_Unicode\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt stdafx.cpp
          stdafx.cpp
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _WINDOWS /D SERVICECOREDLL_EXPORTS /D SERVICE_CORE_DLL /D _WINDLL /D _UNICODE /D UNICODE /D _AFXDLL /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"Debug_Unicode\ServiceCoreD.pch" /Fo"Debug_Unicode\\" /Fd"Debug_Unicode\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt ServiceCoreDll.cpp WHThread.cpp
          WHThread.cpp
-     1>f:\myproject\ryservice\mplatformserver\全局定义\macro.h(54): warning C4996: '_snwprintf': This function or variable may be unsafe. Consider using _snwprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>f:\myproject\ryserver\mplatformserver\全局定义\macro.h(54): warning C4996: '_snwprintf': This function or variable may be unsafe. Consider using _snwprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  c:\program files (x86)\microsoft visual studio 12.0\vc\include\wchar.h(733) : 参见“_snwprintf”的声明
-     1>f:\myproject\ryservice\mplatformserver\全局定义\macro.h(105): warning C4996: '_snwprintf': This function or variable may be unsafe. Consider using _snwprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>f:\myproject\ryserver\mplatformserver\全局定义\macro.h(105): warning C4996: '_snwprintf': This function or variable may be unsafe. Consider using _snwprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  c:\program files (x86)\microsoft visual studio 12.0\vc\include\wchar.h(733) : 参见“_snwprintf”的声明
          ServiceCoreDll.cpp
-     1>f:\myproject\ryservice\mplatformserver\全局定义\macro.h(54): warning C4996: '_snwprintf': This function or variable may be unsafe. Consider using _snwprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>f:\myproject\ryserver\mplatformserver\全局定义\macro.h(54): warning C4996: '_snwprintf': This function or variable may be unsafe. Consider using _snwprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  c:\program files (x86)\microsoft visual studio 12.0\vc\include\wchar.h(733) : 参见“_snwprintf”的声明
-     1>f:\myproject\ryservice\mplatformserver\全局定义\macro.h(105): warning C4996: '_snwprintf': This function or variable may be unsafe. Consider using _snwprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>f:\myproject\ryserver\mplatformserver\全局定义\macro.h(105): warning C4996: '_snwprintf': This function or variable may be unsafe. Consider using _snwprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  c:\program files (x86)\microsoft visual studio 12.0\vc\include\wchar.h(733) : 参见“_snwprintf”的声明
          正在生成代码...
        Link:
@@ -20,9 +20,9 @@
          Debug_Unicode\stdafx.obj
          Debug_Unicode\WHThread.obj
             正在创建库 ../../../链接库/Unicode/ServiceCoreD.lib 和对象 ../../../链接库/Unicode/ServiceCoreD.exp
-         ServiceCoreDll.vcxproj -> F:\MyProject\RYService\MPlatformServer\服务器组件\服务核心\ServiceCoreDll\../../../运行/Debug/Unicode/ServiceCoreD.dll
-     1>已完成生成项目“F:\MyProject\RYService\MPlatformServer\服务器组件\服务核心\ServiceCoreDll\ServiceCoreDll.vcxproj”(Rebuild 个目标)的操作。
+         ServiceCoreDll.vcxproj -> F:\MyProject\RYServer\MPlatformServer\服务器组件\服务核心\ServiceCoreDll\../../../运行/Debug/Unicode/ServiceCoreD.dll
+     1>已完成生成项目“F:\MyProject\RYServer\MPlatformServer\服务器组件\服务核心\ServiceCoreDll\ServiceCoreDll.vcxproj”(Rebuild 个目标)的操作。
 
 生成成功。
 
-已用时间 00:00:04.94
+已用时间 00:00:04.06

@@ -35,5 +35,8 @@
     <ClCompile Include="KernelEngine.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="TCPNetworkEngin.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
