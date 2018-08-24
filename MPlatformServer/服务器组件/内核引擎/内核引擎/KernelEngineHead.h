@@ -11,7 +11,7 @@
 #include <WinSock2.h>
 
 //平台文件
-
+#include "..\..\..\全局定义\Platform.h"
 #include "..\..\..\服务器组件\服务核心\ServiceCoreDll\ServiceCoreDll.h"
 
 //////////////////////////////////////////////////////////////////////////////////

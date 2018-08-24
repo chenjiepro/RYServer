@@ -16,7 +16,7 @@ private:
 	UINT							m_uThreadID;				//线程标识
 	HANDLE							m_hThreadHandle;			//线程句柄
 
-private:
+protected:
 	//构造函数
 	CWHThread();
 	//析构函数

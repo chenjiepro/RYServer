@@ -223,7 +223,7 @@ public:
 	//发送完成
 	bool OnSendCompleted(COverLappedSend * pOverLappedSend, DWORD dwThancferred);
 	//接收完成
-	bool OnrRecvCompleted(COverLappedSend * pOverLappedRecv, DWORD dwThancferred);
+	bool OnRecvCompleted(COverLappedRecv * pOverLappedRecv, DWORD dwThancferred);
 	//关闭完成
 	bool OnCloseCompleted();
 
@@ -251,5 +251,221 @@ private:
 	inline COverLappedSend * GetSendOverLapped(WORD wPacketSize);
 };
 
+//////////////////////////////////////////////////////////////////////////
 
+//读写线程类
+class CTCPNetworkThreadReadWrite : public CWHThread
+{
+	//变量定义
+protected:
+	HANDLE						m_hCompletionPort;					//完成端口
+
+	//函数定义
+public:
+	//构造函数
+	CTCPNetworkThreadReadWrite();
+	//析构函数
+	virtual ~CTCPNetworkThreadReadWrite();
+
+	//功能函数
+public:
+	//配置函数
+	bool InitThread(HANDLE hCompletionPort);
+
+	//重载函数
+private:
+	//运行函数
+	virtual bool OnEventThreadRun();
+};
+
+
+//////////////////////////////////////////////////////////////////////////
+//应答线程对象
+class CTCPNetworkThreadAccept : public CWHThread
+{
+	//变量定义
+protected:
+	SOCKET						m_hListenSocket;					//监听连接
+	HANDLE						m_hCompletionPort;					//完成端口
+	CTCPNetworkEngine *			m_pTCPNetworkEngine;				//网络引擎
+
+	//函数定义
+public:
+	//构造函数
+	CTCPNetworkThreadAccept();
+	//析构函数
+	virtual ~CTCPNetworkThreadAccept();
+
+	//功能函数
+public:
+	//配置函数
+	bool InitThread(HANDLE hCompletionPort, SOCKET hListenSocket, CTCPNetworkEngine * pNetworkEngine);
+
+	//重载函数
+private:
+	//运行函数
+	virtual bool OnEventThreadRun();
+};
+
+
+//////////////////////////////////////////////////////////////////////////
+//检测线程类
+class CTCPNetworkThreadDetect : public CWHThread
+{
+	//变量定义
+protected:
+	DWORD						m_dwPileTime;						//积累时间
+	DWORD						m_dwDetectTime;						//检测时间
+	CTCPNetworkEngine *			m_pTCPNetworkEngine;				//网络引擎
+
+	//函数定义
+public:
+	//构造函数
+	CTCPNetworkThreadDetect();
+	//析构函数
+	virtual ~CTCPNetworkThreadDetect();
+
+	//功能函数
+public:
+	//配置函数
+	bool InitThread(CTCPNetworkEngine * pNetworkEngine, DWORD dwDetectTime);
+
+	//重载函数
+private:
+	//运行函数
+	virtual bool OnEventThreadRun();
+};
+
+
+//////////////////////////////////////////////////////////////////////////
+
+//类型说明
+typedef CWHArray<CTCPNetworkItem *> CTCPNetworkItemPtrArray;
+typedef CWHArray<CTCPNetworkThreadReadWrite *> CTCPNetworkThreadRWPtrArray;
+
+//网络引擎
+class CTCPNetworkEngine : public ITCPNetworkEngine, public IAsynchronismEngineSink, public ITCPNetworkItemSink
+{
+	friend class CTCPNetworkThreadDetect;
+	friend class CTCPNetworkThreadAccept;
+	friend class CTCPNetworkThreadReadWrite;
+
+	//验证变量
+protected:
+	bool						m_bValidate;						//验证标志
+	bool						m_bNormalRun;						//运行标志
+
+	//辅助变量
+protected:
+	bool						m_bService;							//服务标志
+	BYTE						m_cbBuffer[MAX_ASYNCHRONISM_DATA];	//临时对象
+
+	//配置变量
+protected:
+	WORD						m_wMaxConnect;						//最大连接
+	WORD						m_wServicePort;						//监听端口
+	DWORD						m_dwDetectTime;						//检测时间
+
+	//内核变量
+protected:
+	SOCKET						m_hServerSocket;					//连接句柄
+	HANDLE						m_hCompletePort;					//完成端口
+	ITCPNetworkEngineEvent *	m_pITCPNetworkEngineEvent;			//事件接口
+
+	//子项变量
+protected:
+	CCriticalSection			m_ItemLocked;						//子项锁定
+	CTCPNetworkItemPtrArray		m_NetworkItemBuffer;				//空闲连接
+	CTCPNetworkItemPtrArray		m_NetworkItemActive;				//活动连接
+	CTCPNetworkItemPtrArray		m_NetworkItemStorage;				//存储连接
+	CTCPNetworkItemPtrArray		m_TempNetworkItemArray;				//临时连接
+
+	//组件变量
+protected:
+	CCriticalSection			m_BufferLocked;						//缓冲锁定
+	CAsynchronismEngine			m_AsynchronismEngine;				//异步对象
+	CTCPNetworkThreadDetect		m_SocketDetectThread;				//检测线程
+	CTCPNetworkThreadAccept		m_SocketAcceptThread;				//应答线程
+	CTCPNetworkThreadRWPtrArray	m_SocketRWThreadArray;				//读写线程
+
+	//函数定义
+public:
+	//构造函数
+	CTCPNetworkEngine();
+	//析构函数
+	virtual ~CTCPNetworkEngine();
+
+	//基础接口
+public:
+	//释放对象
+	virtual VOID Release() { delete this; }
+	//接口查询
+	virtual VOID * QueryInterface(REFGUID Guid, DWORD dwQueryVer);
+
+	//服务接口
+public:
+	//启动服务
+	virtual bool StartService();
+	//停止服务
+	virtual bool ConcludeService();
+
+	//信息接口
+public:
+	//配置端口
+	virtual WORD GetServicePort();
+	//当前端口
+	virtual WORD GetCurrentPort();
+
+	//发送接口
+public:
+	//发送函数
+	virtual bool SendData(DWORD dwSocketID, WORD wMainCmdID, WORD wSubCmdID);
+	//发送函数
+	virtual bool SendData(DWORD dwSocketID, WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize);
+	//批量发送
+	virtual bool SendDataBatch(WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize, BYTE cbBatchMask);
+
+	//控制接口
+public:
+	//关闭连接
+	virtual bool CloseSocket(DWORD dwSocketID);
+	//设置关闭
+	virtual bool ShutDownSocket(DWORD dwSocketID);
+	//允许群发
+	virtual bool AllowBatchSend(DWORD dwSocketID, bool bAllowBatch, BYTE cbBatchMask);
+
+	//异步接口
+public:
+	//启动事件
+	virtual bool OnAsynchronismEngineStart();
+	//停止事件
+	virtual bool OnAsynchronismEngineConclude();
+	//异步数据
+	virtual bool OnAsynchronismEngineData(WORD wIdentifier, VOID *pData, WORD wDataSize);
+
+	//内部通知
+public:
+	//绑定事件
+	virtual bool OnEventSocketBind(CTCPNetworkItem * pCTCPNetworkItem);
+	//关闭事件
+	virtual bool OnEventSocketShut(CTCPNetworkItem * pCTCPNetworkItem);
+	//读取事件
+	virtual bool OnEventSocketRead(TCP_Command Command, VOID *pData, WORD wDataSize, CTCPNetworkItem * pCTCPNetworkItem);
+
+	//辅助函数
+protected:
+	//检测连接
+	bool DetectSocket();
+	//网页验证
+	bool WebAttestation();
+
+	//对象管理
+protected:
+	//激活空闲对象
+	CTCPNetworkItem * ActiveNetworkItem();
+	//获取对象
+	CTCPNetworkItem * GetNetworkItem(WORD wIndex);
+	//释放连接对象
+	bool FreeNetworkItem(CTCPNetworkItem * pTCPNetworkItem);
+};
 #endif

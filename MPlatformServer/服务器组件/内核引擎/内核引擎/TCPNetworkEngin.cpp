@@ -440,12 +440,167 @@ bool CTCPNetworkItem::OnSendCompleted(COverLappedSend * pOverLappedSend, DWORD d
 	m_bSendIng = false;
 
 	//判断关闭
+	if (m_hSocketHandle == INVALID_SOCKET)
+	{
+		CloseSocket(m_wRountID);
+	}
 
+	//设置变量
+	if (dwThancferred != 0)
+	{
+		m_wSurvivalTime = SAFETY_QUOTIETY;
+		m_dwSendTickCount = GetTickCount();
+	}
+
+	//继续发送
+	if (m_OverLappedSendActive.GetCount() > 0)
+	{
+		//获取数据
+		pOverLappedSend = m_OverLappedSendActive[0];
+
+		//发送数据
+		DWORD dwThancferred = 0;
+		INT nResultCode = WSASend(m_hSocketHandle, &pOverLappedSend->m_WSABuffer, 1, &dwThancferred, 0,
+								  &pOverLappedSend->m_OverLapped, NULL);
+
+		//结果处理
+		if (nResultCode == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
+		{
+			CloseSocket(m_wRountID);
+			return false;
+		}
+
+		//设置变量
+		m_bSendIng = true;		
+	}
+	
+	return true;
 }
 //接收完成
-bool CTCPNetworkItem::OnrRecvCompleted(COverLappedSend * pOverLappedRecv, DWORD dwThancferred)
+bool CTCPNetworkItem::OnRecvCompleted(COverLappedRecv * pOverLappedRecv, DWORD dwThancferred)
 {
+	//校验变量
+	ASSERT(m_bRecvIng == true);
 
+	//设置变量
+	m_bRecvIng = false;
+
+	//判断关闭
+	if (m_hSocketHandle == INVALID_SOCKET)
+	{
+		CloseSocket(m_wRountID);
+		return true;
+	}
+
+	//接受数据
+	INT nResultCode = recv(m_hSocketHandle, (char*)m_cbRecvBuf + m_wRecvSize, sizeof(m_cbRecvBuf) - m_wRecvSize, 0);
+
+	//关闭判断
+	if (nResultCode <= 0)
+	{
+		CloseSocket(m_wRountID);
+		return true;
+	}
+
+	//中断判断
+	if (m_bShutDown == true) return true;
+
+	//设置变量
+	m_wRecvSize += nResultCode;
+	m_wSurvivalTime = SAFETY_QUOTIETY;
+	m_dwRecvPacketCount = GetTickCount();
+
+	//接收完成
+	BYTE cbBuffer[SOCKET_TCP_BUFFER];
+	TCP_Head * pHead = (TCP_Head *)m_cbRecvBuf;
+
+	//处理数据
+	try
+	{
+		while (m_wRecvSize >= sizeof(TCP_Head))
+		{
+			//校验数据
+			WORD wPacketSize = pHead->TCPInfo.wPacketSize;
+
+			//数据判断
+			if (wPacketSize > SOCKET_TCP_BUFFER) throw TEXT("数据包长度太长");
+			if (wPacketSize < sizeof(TCP_Head))
+			{
+				TCHAR szBuffer[512];
+				_sntprintf(szBuffer, CountArray(szBuffer), TEXT("数据包长度太短 %d,%d,%d,%d,%d,%d,%d,%d"), m_cbRecvBuf[0],
+					m_cbRecvBuf[1],
+					m_cbRecvBuf[2],
+					m_cbRecvBuf[3],
+					m_cbRecvBuf[4],
+					m_cbRecvBuf[5],
+					m_cbRecvBuf[6],
+					m_cbRecvBuf[7]
+					);
+				g_TraceServiceManager.TraceString(szBuffer, TraceLevel_Exception);
+
+				_sntprintf(szBuffer, CountArray(szBuffer), TEXT("包长 %d, 版本 %d, 效验码 %d"), pHead->TCPInfo.wPacketSize,
+					pHead->TCPInfo.cbDataKind, pHead->TCPInfo.cbCheckCode);
+
+				g_TraceServiceManager.TraceString(szBuffer, TraceLevel_Exception);
+				throw TEXT("数据包长度太短");
+			}
+			if (pHead->TCPInfo.cbDataKind != DK_MAPPED && pHead->TCPInfo.cbDataKind != 0x05) {
+				CString aa;
+				aa.Format(TEXT("0x%x"), pHead->TCPInfo.cbDataKind);
+				g_TraceServiceManager.TraceString(aa, TraceLevel_Exception);
+				throw TEXT("数据包版本不匹配");
+			}
+			//完成判断
+			if (m_wRecvSize < wPacketSize) break;
+
+			//提取数据
+			CopyMemory(cbBuffer, m_cbRecvBuf, wPacketSize);
+			WORD wRealySize = CrevasseBuffer(cbBuffer, wPacketSize);
+
+			//设置变量
+			m_dwRecvPacketCount++;
+
+			//解释数据
+			LPVOID pData = cbBuffer + sizeof(TCP_Head);
+			WORD wDataSize = wRealySize + sizeof(TCP_Head);
+			TCP_Command Command = ((TCP_Head *)cbBuffer)->CommandInfo;
+
+			//消息处理
+			if (Command.wMainCmdID != MDM_KN_COMMAND)
+				m_pITCPNetworkItemSink->OnEventSocketRead(Command, pData, wDataSize, this);
+
+			//删除缓冲
+			m_wRecvSize -= wPacketSize;
+			if (m_wRecvSize > 0)
+				MoveMemory(m_cbRecvBuf, m_cbRecvBuf + wPacketSize, m_wRecvSize);
+		}
+	}
+	catch (LPCTSTR pszMessage)
+	{
+		//错误信息
+		TCHAR szString[512] = TEXT("");
+		_sntprintf(szString, CountArray(szString), TEXT("SocketEngine Index=%ld，RountID=%ld，OnRecvCompleted 发生“%s”异常"), m_wIndex, m_wRountID, pszMessage);
+		g_TraceServiceManager.TraceString(szString, TraceLevel_Exception);
+
+		//关闭链接
+		CloseSocket(m_wRountID);
+
+		return false;
+	}
+	catch (...)
+	{
+		//错误信息
+		TCHAR szString[512] = TEXT("");
+		_sntprintf(szString, CountArray(szString), TEXT("SocketEngine Index=%ld，RountID=%ld，OnRecvCompleted 发生“非法”异常"), m_wIndex, m_wRountID);
+		g_TraceServiceManager.TraceString(szString, TraceLevel_Exception);
+
+		//关闭链接
+		CloseSocket(m_wRountID);
+
+		return false;
+	}
+
+	return RecvData();
 }
 //关闭完成
 bool CTCPNetworkItem::OnCloseCompleted()
@@ -493,12 +648,25 @@ WORD CTCPNetworkItem::EncryptBuffer(BYTE pcbDataBuffer[], WORD wDataSize, WORD w
 //解密数据
 WORD CTCPNetworkItem::CrevasseBuffer(BYTE pcbDataBuffer[], WORD wDataSize)
 {
+	WORD i = 0;
+	//校验参数
+	ASSERT(wDataSize >= sizeof(TCP_Head));
+	ASSERT(((TCP_Head*)pcbDataBuffer)->TCPInfo.wPacketSize == wDataSize);
 
+	//校验码与字节映射
+	TCP_Head * pHead = (TCP_Head*)pcbDataBuffer;
+	for (i = sizeof(TCP_Head); i < wDataSize; ++i)
+	{
+		pcbDataBuffer[i] = MapRecvByte(pcbDataBuffer[i]);
+	}
+
+	return wDataSize;
 }
 //随机映射
 WORD CTCPNetworkItem::SeedRandMap(WORD wSeed)
 {
-
+	DWORD dwHold = wSeed;
+	return (WORD)((dwHold = dwHold * 241103L + 2533101L) >> 16);
 }
 //发送映射数据
 BYTE CTCPNetworkItem::MapSendByte(BYTE cbData)
@@ -510,7 +678,9 @@ BYTE CTCPNetworkItem::MapSendByte(BYTE cbData)
 //接收映射数据
 BYTE CTCPNetworkItem::MapRecvByte(BYTE cbData)
 {
-
+	BYTE cbMap;
+	cbMap = g_RecvByteMap[cbData];
+	return cbMap;
 }
 //发送判断
 bool CTCPNetworkItem::SendVerdict(WORD wRountID)
@@ -564,4 +734,257 @@ COverLappedSend * CTCPNetworkItem::GetSendOverLapped(WORD wPacketSize)
 	}
 
 	return NULL;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+
+//读写线程类
+//构造函数
+CTCPNetworkThreadReadWrite::CTCPNetworkThreadReadWrite()
+{
+	m_hCompletionPort = NULL;
+	return;
+}
+//析构函数
+CTCPNetworkThreadReadWrite::~CTCPNetworkThreadReadWrite()
+{
+
+}
+//配置函数
+bool CTCPNetworkThreadReadWrite::InitThread(HANDLE hCompletionPort)
+{
+	ASSERT(hCompletionPort != NULL);
+
+	m_hCompletionPort = hCompletionPort;
+
+	return true;
+}
+//运行函数
+bool CTCPNetworkThreadReadWrite::OnEventThreadRun()
+{
+	//校验参数
+	ASSERT(m_hCompletionPort != NULL);
+
+	//变量定义
+	DWORD dwThancferred = 0;
+	OVERLAPPED * pOverLapped = NULL;
+	CTCPNetworkItem * pTCPNetworkItem = NULL;
+
+	//完成端口
+	BOOL bSuccess = GetQueuedCompletionStatus(m_hCompletionPort, &dwThancferred, 
+											 (PULONG_PTR)&pTCPNetworkItem, &pOverLapped, INFINITE);
+
+	if (bSuccess == FALSE && GetLastError() != ERROR_NETNAME_DELETED) return false;
+
+	//退出判断
+	if (pTCPNetworkItem == NULL && pOverLapped == NULL) return false;
+
+	//变量定义
+	COverLapped * pSocketLapped = CONTAINING_RECORD(pOverLapped, COverLapped, m_OverLapped);
+
+	//操作处理
+	switch (pSocketLapped->GetOperationType())
+	{
+		case enOperationType_Send: //数据发送
+			{
+				CWHDataLocker ThreadLock(pTCPNetworkItem->GetCriticalSection());
+				pTCPNetworkItem->OnSendCompleted((COverLappedSend *)pSocketLapped, dwThancferred);
+				break;
+			}
+		case enOperationType_Recv: //数据读取
+			{
+				CWHDataLocker ThreadLock(pTCPNetworkItem->GetCriticalSection());
+				pTCPNetworkItem->OnRecvCompleted((COverLappedRecv *)pSocketLapped, dwThancferred);
+				break;
+			}
+	}
+
+	return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//应答线程对象
+//构造函数
+CTCPNetworkThreadAccept::CTCPNetworkThreadAccept()
+{
+	m_hListenSocket = INVALID_SOCKET;
+	m_hCompletionPort = NULL;
+	m_pTCPNetworkEngine = NULL;
+}
+//析构函数
+CTCPNetworkThreadAccept::~CTCPNetworkThreadAccept()
+{
+
+}
+//配置函数
+bool CTCPNetworkThreadAccept::InitThread(HANDLE hCompletionPort, SOCKET hListenSocket, CTCPNetworkEngine * pNetworkEngine)
+{
+	//校验参数
+	ASSERT(hCompletionPort != NULL);
+	ASSERT(hListenSocket != INVALID_SOCKET);
+	ASSERT(pNetworkEngine != NULL);
+	//设置变量
+	m_hListenSocket = hListenSocket;
+	m_hCompletionPort = hCompletionPort;
+	m_pTCPNetworkEngine = pNetworkEngine;
+
+	return true;
+}
+//运行函数
+bool CTCPNetworkThreadAccept::OnEventThreadRun()
+{
+	//校验参数
+	ASSERT(m_hCompletionPort != NULL);
+	ASSERT(m_pTCPNetworkEngine != NULL);
+
+	//变量定义
+	SOCKET hConnectSocket = INVALID_SOCKET;
+	CTCPNetworkItem * pTCPNetworkItem = NULL;
+
+	try
+	{
+		//监听连接
+		SOCKADDR_IN SocketAddr;
+		INT nBufferSize = sizeof(SocketAddr);
+		hConnectSocket = WSAAccept(m_hListenSocket, (SOCKADDR*)&SocketAddr, &nBufferSize, NULL, NULL);
+
+		//退出判断
+		if (hConnectSocket == INVALID_SOCKET) return false;
+
+		//获取连接
+		pTCPNetworkItem = m_pTCPNetworkEngine->ActiveNetworkItem();
+
+		//失败判断
+		if (pTCPNetworkItem == NULL)
+		{
+			ASSERT(FALSE);
+			throw TEXT("申请连接对象失败");
+		}
+
+		//锁定对象
+		CWHDataLocker ThreadLock(pTCPNetworkItem->GetCriticalSection());
+
+		//绑定对象
+		pTCPNetworkItem->Attach(hConnectSocket, SocketAddr.sin_addr.S_un.S_addr);
+		CreateIoCompletionPort((HANDLE)hConnectSocket, m_hCompletionPort, (ULONG_PTR)pTCPNetworkItem, 0);
+
+		//发起接收
+		pTCPNetworkItem->RecvData();
+	}
+	catch (...)
+	{
+		//清理对象
+		ASSERT(pTCPNetworkItem == NULL);
+
+		//关闭连接
+		if (hConnectSocket != INVALID_SOCKET)
+		{
+			closesocket(hConnectSocket);
+		}
+	}
+
+	return true;
+}
+
+//检测线程类
+
+//构造函数
+CTCPNetworkThreadDetect::CTCPNetworkThreadDetect()
+{
+	m_dwPileTime = 0L;
+	m_dwDetectTime = 10000L;
+	m_pTCPNetworkEngine = NULL;
+}
+//析构函数
+CTCPNetworkThreadDetect::~CTCPNetworkThreadDetect()
+{
+
+}
+//配置函数
+bool CTCPNetworkThreadDetect::InitThread(CTCPNetworkEngine * pNetworkEngine, DWORD dwDetectTime)
+{
+	//校验参数
+	ASSERT(pNetworkEngine != NULL);
+
+	//设置变量
+	m_dwPileTime = 0L;
+	m_dwDetectTime = dwDetectTime;
+	m_pTCPNetworkEngine = pNetworkEngine;
+
+	return true;
+}
+//运行函数
+bool CTCPNetworkThreadDetect::OnEventThreadRun()
+{
+	//校验参数
+	ASSERT(m_pTCPNetworkEngine != NULL);
+
+	//设置间隔
+	Sleep(200);
+	m_dwPileTime += 200L;
+
+	//检测连接
+	if (m_dwPileTime >= m_dwDetectTime)
+	{
+		m_dwPileTime = 0L;
+		m_pTCPNetworkEngine->DetectSocket();
+	}
+
+	return true;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+
+//网络引擎
+
+//构造函数
+CTCPNetworkEngine::CTCPNetworkEngine()
+{
+	//验证变量
+	m_bValidate = false;
+	m_bNormalRun = true;
+
+	//辅助变量
+	m_bService = false;
+	ZeroMemory(m_cbBuffer, sizeof(m_cbBuffer));
+
+
+	//配置变量
+	m_wMaxConnect = 0;
+	m_wServicePort = 0;
+	m_dwDetectTime = 10000L;
+
+	//内核变量
+	m_hServerSocket = INVALID_SOCKET;
+	m_hCompletePort = NULL;
+	m_pITCPNetworkEngineEvent = NULL;
+}
+//析构函数
+CTCPNetworkEngine::~CTCPNetworkEngine()
+{
+
+}
+
+//接口查询
+VOID * CTCPNetworkEngine::QueryInterface(REFGUID Guid, DWORD dwQueryVer)
+{
+	QUERYINTERFACE(IServiceModule, Guid, dwQueryVer);
+	QUERYINTERFACE(ITCPNetworkEngine, Guid, dwQueryVer);
+	QUERYINTERFACE(IAsynchronismEngineSink, Guid, dwQueryVer);
+	QUERYINTERFACE_IUNKNOWNEX(ITCPNetworkEngine, Guid, dwQueryVer);
+
+	return NULL;
+}
+
+//启动服务
+bool CTCPNetworkEngine::StartService()
+{
+
+}
+//停止服务
+bool CTCPNetworkEngine::ConcludeService()
+{
+
 }

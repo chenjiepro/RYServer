@@ -4,11 +4,29 @@
 //
 
 #pragma once
-#include <SDKDDKVer.h>
+//#include <SDKDDKVer.h>
 
 
 // TODO:  在此处引用程序需要的其他头文件
+#ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN
+#endif
+
+#ifndef WINVER
+#define WINVER 0x0501
+#endif
+
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0501
+#endif
+
+#ifndef _WIN32_WINDOWS
+#define _WIN32_WINDOWS 0x0410
+#endif
+
+#ifndef _WIN32_IE
+#define _WIN32_IE 0x0400
+#endif
 
 #define _ATL_ATTRIBUTES
 #define _AFX_ALL_WARNINGS
