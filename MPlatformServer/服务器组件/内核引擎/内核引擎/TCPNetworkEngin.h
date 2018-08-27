@@ -369,7 +369,7 @@ protected:
 	//内核变量
 protected:
 	SOCKET						m_hServerSocket;					//连接句柄
-	HANDLE						m_hCompletePort;					//完成端口
+	HANDLE						m_hCompletionPort;					//完成端口
 	ITCPNetworkEngineEvent *	m_pITCPNetworkEngineEvent;			//事件接口
 
 	//子项变量
@@ -415,6 +415,13 @@ public:
 	virtual WORD GetServicePort();
 	//当前端口
 	virtual WORD GetCurrentPort();
+
+	//配置接口
+public:
+	//设置接口
+	virtual bool SetTCPNetworkEngineEvent(IUnknownEx * pIUnknownEx);
+	//设置参数
+	virtual bool SetServiceParameter(WORD wServicePort, WORD wMaxConnect, LPCTSTR  pszCompilation);
 
 	//发送接口
 public:

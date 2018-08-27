@@ -116,6 +116,7 @@
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="ServiceCoreDll.h" />
+    <ClInclude Include="WHDataQueue.h" />
     <ClInclude Include="WHThread.h" />
   </ItemGroup>
   <ItemGroup>
@@ -125,6 +126,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_Unicode|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="WHDataQueue.cpp" />
     <ClCompile Include="WHThread.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -285,7 +285,7 @@ interface IAsynchronismEngine : public IServiceModule
 	//配置接口
 public:
 	//队列负荷
-	//virtual bool GetBurthenInfo(tagBurthenInfo & BurthenInfo) = NULL;
+	virtual bool GetBurthenInfo(tagBurthenInfo & BurthenInfo) = NULL;
 	//设置模块
 	virtual bool SetAsynchronismSink(IUnknownEx *pIUnknowEx) = NULL;
 
@@ -294,7 +294,7 @@ public:
 	//投递数据
 	virtual bool PostAsynchronismData(WORD wIdentifier, VOID *pData, WORD wDataSize) = NULL;
 	//投递数据
-	//virtual bool PostAsynchronismData(WORD wIdentifier, tagDataBuffer DataBuffer[], WORD wDataCount) = NULL;
+	virtual bool PostAsynchronismData(WORD wIdentifier, tagDataBuffer DataBuffer[], WORD wDataCount) = NULL;
 };
 
 

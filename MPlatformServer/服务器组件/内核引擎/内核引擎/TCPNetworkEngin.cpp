@@ -30,7 +30,7 @@
 struct tagSendDataRequest
 {
 	WORD							wIndex;								//连接索引
-	WORD							wRountid;							//循环索引
+	WORD							wRountID;							//循环索引
 	WORD							wMainCmdID;							//主命令码
 	WORD							wSubCmdID;							//子命令码
 	WORD							wDataSize;							//数据大小
@@ -958,7 +958,7 @@ CTCPNetworkEngine::CTCPNetworkEngine()
 
 	//内核变量
 	m_hServerSocket = INVALID_SOCKET;
-	m_hCompletePort = NULL;
+	m_hCompletionPort = NULL;
 	m_pITCPNetworkEngineEvent = NULL;
 }
 //析构函数
@@ -981,10 +981,251 @@ VOID * CTCPNetworkEngine::QueryInterface(REFGUID Guid, DWORD dwQueryVer)
 //启动服务
 bool CTCPNetworkEngine::StartService()
 {
+	//状态校验
+	ASSERT(m_bService == false);
+	if (m_bService == true) return false;
 
+	//判断端口
+	if (m_wServicePort == 0)
+	{
+		m_wServicePort = 3000;
+	}
+
+	//系统信息
+	SYSTEM_INFO SystemInfo;
+	GetSystemInfo(&SystemInfo);
+	DWORD dwThreadCount = SystemInfo.dwNumberOfProcessors;
+
+	//完成端口
+	m_hCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, SystemInfo.dwNumberOfProcessors);
+	if (m_hCompletionPort == NULL) return false;
+
+	//建立网络
+	SOCKADDR_IN SocketAddr;
+	ZeroMemory(&SocketAddr, sizeof(SocketAddr));
+
+	SocketAddr.sin_family = AF_INET;
+	SocketAddr.sin_addr.S_un.S_addr = INADDR_ANY;
+	SocketAddr.sin_port = htons(m_wServicePort);
+	m_hServerSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+	//错误判断
+	if (m_hServerSocket == INVALID_SOCKET)
+	{
+		LPCTSTR pszString = TEXT("系统资源不足或者 TCP/IP 协议没有安装，网络启动失败");
+		g_TraceServiceManager.TraceString(pszString, TraceLevel_Exception);
+		return false;
+	}
+	//将完成端口与socket绑定 用于监听
+	for (;;)
+	{
+		if (0 != bind(m_hServerSocket, (SOCKADDR*)&SocketAddr, sizeof(SocketAddr)))
+		{
+			closesocket(m_hServerSocket);
+		}
+		else
+		{
+			break;
+		}
+		//绑定失败再次尝试
+		m_hServerSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+		//错误判断
+		if (m_hServerSocket == INVALID_SOCKET)
+		{
+			LPCTSTR pszString = TEXT("系统资源不足或者 TCP/IP 协议没有安装，网络启动失败");
+			g_TraceServiceManager.TraceString(pszString, TraceLevel_Exception);
+			return false;
+		}
+		m_wServicePort++;
+		SocketAddr.sin_family = AF_INET;
+		SocketAddr.sin_addr.S_un.S_addr = INADDR_ANY;
+		SocketAddr.sin_port = htons(m_wServicePort);
+	}
+
+	//监听端口
+	if (listen(m_hServerSocket, 200) == SOCKET_ERROR)
+	{
+		TCHAR szString[512] = TEXT("");
+		_sntprintf(szString, CountArray(szString), TEXT("端口正被其他服务占用，监听 %ld 端口失败"), m_wServicePort);
+		g_TraceServiceManager.TraceString(szString, TraceLevel_Exception);
+		return false;
+	}
+
+	//异步引擎
+	IUnknownEx * pIUnknownEx = QUERY_ME_INTERFACE(IUnknownEx);
+	if (m_AsynchronismEngine.SetAsynchronismSink(pIUnknownEx) == false)
+	{
+		ASSERT(FALSE);
+		return false;
+	}
+
+	//网页验证
+	WebAttestation();
+
+	//启动服务
+	if (m_AsynchronismEngine.StartService() == false)
+	{
+		ASSERT(FALSE);
+		return false;
+	}
+
+	//创建读写线程
+	for (DWORD i = 0; i < dwThreadCount; ++i)
+	{
+		CTCPNetworkThreadReadWrite * pNetworkRSThread = new CTCPNetworkThreadReadWrite();
+		if (pNetworkRSThread->InitThread(m_hCompletionPort) == false) return false;
+		m_SocketRWThreadArray.Add(pNetworkRSThread);
+	}
+
+	//应答线程
+	if (m_SocketAcceptThread.InitThread(m_hCompletionPort, m_hServerSocket, this) == false) return false;
+	if (m_SocketAcceptThread.StartThread() == false) return false;
+
+	//启动读写线程
+	for (DWORD i = 0; i < dwThreadCount; ++i)
+	{
+		CTCPNetworkThreadReadWrite * pNetworkRWThread = m_SocketRWThreadArray[i];
+		ASSERT(pNetworkRWThread != NULL);
+		if (pNetworkRWThread->StartThread() == false) return false;
+	}
+
+	//检测线程
+	m_SocketDetectThread.InitThread(this, m_dwDetectTime);
+	if (m_SocketDetectThread.StartThread() == false) return false;
+
+	//设置变量
+	m_bService = true;
+
+	return true;
 }
 //停止服务
 bool CTCPNetworkEngine::ConcludeService()
+{
+	//设置变量
+	m_bService = false;
+
+	//检测线程
+	m_SocketDetectThread.ConcludeThread(INFINITE);
+
+	//应答线程
+	if (m_hServerSocket != INVALID_SOCKET)
+	{
+		closesocket(m_hServerSocket);
+		m_hServerSocket = INVALID_SOCKET;
+	}
+
+	m_SocketAcceptThread.ConcludeThread(INFINITE);
+
+	//异步引擎
+	m_AsynchronismEngine.ConcludeService();
+
+	//读写线程
+	INT_PTR nCount = m_SocketRWThreadArray.GetCount();
+	if (m_hCompletionPort != NULL)
+	{
+		for (INT_PTR i = 0; i < nCount; ++i)
+			//指示线程立即结束并退出
+			PostQueuedCompletionStatus(m_hCompletionPort, 0, NULL, NULL);
+	}
+	for (INT_PTR i = 0; i < nCount; ++i)
+	{
+		CTCPNetworkThreadReadWrite * pSocketThread = m_SocketRWThreadArray[i];
+		ASSERT(pSocketThread != NULL);
+		pSocketThread->ConcludeThread(INFINITE);
+		SafeDelete(pSocketThread);
+	}
+	m_SocketRWThreadArray.RemoveAll();
+
+	//完成端口
+	if (m_hCompletionPort != NULL)
+	{
+		CloseHandle(m_hCompletionPort);
+		m_hCompletionPort = NULL;
+	}
+
+	//关闭连接
+	CTCPNetworkItem * pTCPNetworkItem = NULL;
+	for (INT_PTR i = 0; i < nCount; ++i)
+	{
+		pTCPNetworkItem = m_NetworkItemActive[i];
+		pTCPNetworkItem->CloseSocket(pTCPNetworkItem->GetRountID());
+		pTCPNetworkItem->ResumeData();
+	}
+
+	//重置数据
+	m_NetworkItemBuffer.Append(m_NetworkItemActive);
+	m_NetworkItemActive.RemoveAll();
+	m_TempNetworkItemArray.RemoveAll();
+
+	return true;
+}
+//配置端口
+WORD CTCPNetworkEngine::GetServicePort()
+{
+	return m_wServicePort;
+}
+//当前端口
+WORD CTCPNetworkEngine::GetCurrentPort()
+{
+	return m_wServicePort;
+}
+//设置接口
+bool CTCPNetworkEngine::SetTCPNetworkEngineEvent(IUnknownEx * pIUnknownEx)
+{
+	//状态校验
+	ASSERT(m_bService == false);
+	if (m_bService == true) return false;
+
+	//查询接口
+	m_pITCPNetworkEngineEvent = QUERY_OBJECT_PTR_INTERFACE(pIUnknownEx, ITCPNetworkEngineEvent);
+
+	//错误判断
+	if (m_pITCPNetworkEngineEvent == NULL)
+	{
+		ASSERT(FALSE);
+		return false;
+	}
+
+	return true;
+}
+//设置参数
+bool CTCPNetworkEngine::SetServiceParameter(WORD wServicePort, WORD wMaxConnect, LPCTSTR  pszCompilation)
+{
+	//状态校验
+	ASSERT(m_bService == false);
+	if (m_bService == true) return false;
+
+	//设置变量
+	ASSERT(wServicePort != 0);
+	m_wMaxConnect = wMaxConnect;
+	m_wServicePort = wServicePort;
+
+	return true;
+}
+//发送函数
+bool CTCPNetworkEngine::SendData(DWORD dwSocketID, WORD wMainCmdID, WORD wSubCmdID)
+{
+	//缓冲锁定
+	CWHDataLocker ThreadLock(m_BufferLocked);
+	tagSendDataRequest * pSendDataRequest = (tagSendDataRequest *)m_cbBuffer;
+
+	//构造数据
+	pSendDataRequest->wDataSize = 0;
+	pSendDataRequest->wSubCmdID = wSubCmdID;
+	pSendDataRequest->wMainCmdID = wMainCmdID;
+	pSendDataRequest->wIndex = SOCKET_INDEX(dwSocketID);
+	pSendDataRequest->wRountID = SOCKET_ROUNTID(dwSocketID);
+
+	//发送请求
+	WORD wSendSize = sizeof(tagSendDataRequest) - sizeof(pSendDataRequest->cbSendBuffer);
+	return m_AsynchronismEngine.PostAsynchronismData(ASYNCHRONISM_SEND_DATA, m_cbBuffer, wSendSize);
+}
+//发送函数
+bool CTCPNetworkEngine::SendData(DWORD dwSocketID, WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize)
+{
+	//校验数据
+}
+//批量发送
+bool CTCPNetworkEngine::SendDataBatch(WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize, BYTE cbBatchMask)
 {
 
 }

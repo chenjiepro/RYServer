@@ -41,7 +41,7 @@
 //#include "WHEncrypt.h"
 //#include "WHService.h"
 //#include "WHIniData.h"
-//#include "WHDataQueue.h"
+#include "WHDataQueue.h"
 //#include "WHDataLocker.h"
 //#include "WHCommandLine.h"
 //#include "WHMD5CheckSum.h"

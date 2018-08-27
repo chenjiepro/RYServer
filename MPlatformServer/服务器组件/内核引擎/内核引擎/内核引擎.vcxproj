@@ -114,11 +114,13 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AsynchronismEngine.h" />
     <ClInclude Include="KernelEngineHead.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="TCPNetworkEngin.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AsynchronismEngine.cpp" />
     <ClCompile Include="KernelEngine.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
