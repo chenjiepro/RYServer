@@ -10,6 +10,7 @@
 //类说明
 class CAsynchronismEngine;
 
+//数据线程
 class CAsynchronismThread : public CWHThread
 {
 	//运行变量
