@@ -43,7 +43,31 @@ VOID CAsynchronismThread::SetAsynchronismEngineSink(IAsynchronismEngineSink * pI
 //运行事件
 bool CAsynchronismThread::OnEventThreadRun()
 {
+	//校验参数
+	ASSERT(m_hCompletionPort != NULL);
+	ASSERT(m_pIAsynchronismEngineSink != NULL);
 
+	//变量定义
+	DWORD dwThancferred = 0L;
+	OVERLAPPED * pOverLapped = NULL;
+	CAsynchronismEngine * pAsynchronismEngine = NULL;
+
+	//完成端口
+	if (GetQueuedCompletionStatus(m_hCompletionPort, &dwThancferred, (PULONG_PTR)&pAsynchronismEngine, &pOverLapped, INFINITE))
+	{
+		//退出判断
+		if (pAsynchronismEngine == NULL) return false;
+
+		//队列锁定
+		CWHDataLocker ThreadLock(pAsynchronismEngine->m_CriticalSection);
+
+		//提取数据
+		tagDataHead DataHead;
+		pAsynchronismEngine->m_DataQueue.DistillData(DataHead, m_cbBuffer, sizeof(m_cbBuffer));
+
+		//队列解锁
+		ThreadLock.UnLock();
+	}
 }
 //开始事件
 bool CAsynchronismThread::OnEventThreadStrat()
