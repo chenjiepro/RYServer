@@ -30,6 +30,9 @@
     <ClInclude Include="WHDataQueue.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="WHDataLocker.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -42,6 +45,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="WHDataQueue.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="WHDataLocker.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

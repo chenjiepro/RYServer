@@ -118,6 +118,8 @@
     <ClInclude Include="KernelEngineHead.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="TCPNetworkEngin.h" />
+    <ClInclude Include="TraceService.h" />
+    <ClInclude Include="TraceServiceManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AsynchronismEngine.cpp" />
@@ -128,6 +130,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="TCPNetworkEngin.cpp" />
+    <ClCompile Include="TraceService.cpp" />
+    <ClCompile Include="TraceServiceManager.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

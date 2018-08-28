@@ -2,6 +2,7 @@
 #define TCP_NETWORK_ENGINE_HEAD_FILE
 
 #include "KernelEngineHead.h"
+#include "AsynchronismEngine.h"
 
 //////////////////////////////////////////////////////////////////////////
 //枚举定义
@@ -444,9 +445,9 @@ public:
 	//异步接口
 public:
 	//启动事件
-	virtual bool OnAsynchronismEngineStart();
+	virtual bool OnAsynchronismEngineStart() { return true; }
 	//停止事件
-	virtual bool OnAsynchronismEngineConclude();
+	virtual bool OnAsynchronismEngineConclude() { return true; }
 	//异步数据
 	virtual bool OnAsynchronismEngineData(WORD wIdentifier, VOID *pData, WORD wDataSize);
 

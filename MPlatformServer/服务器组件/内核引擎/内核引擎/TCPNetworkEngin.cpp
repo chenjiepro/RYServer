@@ -116,6 +116,7 @@ COverLappedRecv::~COverLappedRecv()
 
 //构造函数
 CTCPNetworkItem::CTCPNetworkItem(WORD wIndex, ITCPNetworkItemSink * pITCPNetworkItemSink)
+	: m_wIndex(wIndex), m_pITCPNetworkItemSink(pITCPNetworkItemSink)
 {
 	//连接属性
 	m_dwClientIP = 0L;
@@ -1223,9 +1224,444 @@ bool CTCPNetworkEngine::SendData(DWORD dwSocketID, WORD wMainCmdID, WORD wSubCmd
 bool CTCPNetworkEngine::SendData(DWORD dwSocketID, WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize)
 {
 	//校验数据
+	ASSERT((wDataSize + sizeof(TCP_Head)) <= SOCKET_TCP_PACKET);
+	if ((wDataSize + sizeof(TCP_Head)) > SOCKET_TCP_PACKET) return false;
+
+	//缓冲锁定
+	CWHDataLocker ThreadLock(m_BufferLocked);
+	tagSendDataRequest * pSendDataRequest = (tagSendDataRequest *)m_cbBuffer;
+
+	//构造数据
+	pSendDataRequest->wDataSize = wDataSize;
+	pSendDataRequest->wSubCmdID = wSubCmdID;
+	pSendDataRequest->wMainCmdID = wMainCmdID;
+	pSendDataRequest->wIndex = SOCKET_INDEX(dwSocketID);
+	pSendDataRequest->wRountID = SOCKET_ROUNTID(dwSocketID);
+
+	if (wDataSize > 0)
+	{
+		ASSERT(pData != NULL);
+		CopyMemory(pSendDataRequest->cbSendBuffer, pData, wDataSize);
+	}
+
+	//发送请求
+	WORD wSendSize = sizeof(tagSendDataRequest) - sizeof(pSendDataRequest->cbSendBuffer) + wDataSize;
+	return m_AsynchronismEngine.PostAsynchronismData(ASYNCHRONISM_SEND_DATA, m_cbBuffer, wSendSize);
 }
 //批量发送
 bool CTCPNetworkEngine::SendDataBatch(WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize, BYTE cbBatchMask)
 {
+	//校验数据
+	ASSERT((wDataSize + sizeof(TCP_Head)) <= SOCKET_TCP_PACKET);
+	if ((wDataSize + sizeof(TCP_Head)) > SOCKET_TCP_PACKET) return false;
 
+	//缓冲锁定
+	CWHDataLocker ThreadLock(m_BufferLocked);
+	tagBatchSendRequest * pBatchSendRequest = (tagBatchSendRequest *)m_cbBuffer;
+
+	pBatchSendRequest->wMainCmdID = wMainCmdID;
+	pBatchSendRequest->wSubCmdID = wSubCmdID;
+	pBatchSendRequest->wDataSize = wDataSize;
+	pBatchSendRequest->cbBatchMask = cbBatchMask;
+
+	if (wDataSize > 0)
+	{
+		ASSERT(pData != NULL);
+		CopyMemory(pBatchSendRequest->cbSendBuffer, pData, wDataSize);
+	}
+
+	//发送请求
+	WORD wSendSize = sizeof(pBatchSendRequest) - sizeof(pBatchSendRequest->cbSendBuffer) + wDataSize;
+	return m_AsynchronismEngine.PostAsynchronismData(ASYNCHRONISM_SEND_BATCH, m_cbBuffer, wSendSize);
 }
+//关闭连接
+bool CTCPNetworkEngine::CloseSocket(DWORD dwSocketID)
+{
+	//缓冲锁定
+	CCriticalSection ThreadLock(m_BufferLocked);
+	tagCloseSocket * pCloseSocket = (tagCloseSocket *)m_cbBuffer;
+
+	//构造数据
+	pCloseSocket->wIndex = SOCKET_INDEX(dwSocketID);
+	pCloseSocket->wRountid = SOCKET_ROUNTID(dwSocketID);
+
+	//发送请求
+	return m_AsynchronismEngine.PostAsynchronismData(ASYNCHRONISM_CLOSE_SOCKET, m_cbBuffer, sizeof(tagCloseSocket));
+}
+//设置关闭
+bool CTCPNetworkEngine::ShutDownSocket(DWORD dwSocketID)
+{
+	//缓冲锁定
+	CCriticalSection ThreadLock(m_BufferLocked);
+	tagShutDownSocket * pShutDownSocket = (tagShutDownSocket *)m_cbBuffer;
+
+	//构造数据
+	pShutDownSocket->wIndex = SOCKET_INDEX(dwSocketID);
+	pShutDownSocket->wRountid = SOCKET_ROUNTID(dwSocketID);
+
+	//发送请求
+	return m_AsynchronismEngine.PostAsynchronismData(ASYNCHRONISM_SHUT_DOWN, m_cbBuffer, sizeof(tagShutDownSocket));
+}
+//允许群发
+bool CTCPNetworkEngine::AllowBatchSend(DWORD dwSocketID, bool bAllowBatch, BYTE cbBatchMask)
+{
+	//缓冲锁定
+	CCriticalSection ThreadLock(m_BufferLocked);
+	tagAllowBatchSend * pAllowBatchSend = (tagAllowBatchSend *)m_cbBuffer;
+
+	//构造数据
+	pAllowBatchSend->cbBatchMask = cbBatchMask;
+	pAllowBatchSend->cbAllowBatch = bAllowBatch;
+	pAllowBatchSend->wIndex = SOCKET_INDEX(dwSocketID);
+	pAllowBatchSend->wRountid = SOCKET_ROUNTID(dwSocketID);
+
+	//发送请求
+	return m_AsynchronismEngine.PostAsynchronismData(ASYNCHRONISM_ALLOW_BATCH, m_cbBuffer, sizeof(pAllowBatchSend));
+}
+//异步数据
+bool CTCPNetworkEngine::OnAsynchronismEngineData(WORD wIdentifier, VOID *pData, WORD wDataSize)
+{
+	switch (wIdentifier)
+	{
+		case ASYNCHRONISM_SEND_DATA:		//发送请求
+			{
+				//校验数据
+				tagSendDataRequest * pSendDataRequest = (tagSendDataRequest *)pData;
+
+				ASSERT(wDataSize >= sizeof(tagSendDataRequest) - sizeof(pSendDataRequest->cbSendBuffer));
+				ASSERT(wDataSize == pSendDataRequest->wDataSize + sizeof(tagSendDataRequest) - sizeof(pSendDataRequest->cbSendBuffer));
+
+				//获取对象
+				CTCPNetworkItem * pTCPNetworkItem = GetNetworkItem(pSendDataRequest->wIndex);
+				if (pTCPNetworkItem == NULL) return false;
+
+				//发送数据
+				CWHDataLocker SocketThreadLock(pTCPNetworkItem->GetCriticalSection());
+				pTCPNetworkItem->SendData(pSendDataRequest->cbSendBuffer, pSendDataRequest->wDataSize, pSendDataRequest->wMainCmdID,
+					pSendDataRequest->wSubCmdID, pSendDataRequest->wRountID);
+
+				return true;
+			}
+		case ASYNCHRONISM_SEND_BATCH:		//群发请求
+			{
+				//校验数据
+				tagBatchSendRequest * pBatchSendRequest = (tagBatchSendRequest *)pData;
+
+				ASSERT(wDataSize >= sizeof(tagBatchSendRequest) - sizeof(pBatchSendRequest->cbSendBuffer));
+				ASSERT(wDataSize == pBatchSendRequest->wDataSize + sizeof(tagBatchSendRequest) - sizeof(pBatchSendRequest->cbSendBuffer));
+
+				//获取活动项
+				CWHDataLocker ItemThreadLock(m_ItemLocked);
+				m_TempNetworkItemArray.Copy(m_NetworkItemActive);
+				ItemThreadLock.UnLock();
+
+				//群发数据
+				for (INT_PTR i = 0; i < m_TempNetworkItemArray.GetCount(); ++i)
+				{
+					//获取对象
+					CTCPNetworkItem * pTCPNetworkItem = m_TempNetworkItemArray[i];
+					CWHDataLocker SocketThreadLock(pTCPNetworkItem->GetCriticalSection());
+
+					//发送数据
+					if (pTCPNetworkItem->IsAllowBatch() && pTCPNetworkItem->GetBatchMask() == pBatchSendRequest->cbBatchMask)
+					{
+						pTCPNetworkItem->SendData(pBatchSendRequest->cbSendBuffer, pBatchSendRequest->wDataSize, pBatchSendRequest->wMainCmdID,
+							pBatchSendRequest->wSubCmdID, pTCPNetworkItem->GetRountID());
+					}
+				}
+
+				return true;
+			}
+		case ASYNCHRONISM_SHUT_DOWN:		//安全关闭
+			{
+				//校验数据
+				ASSERT(wDataSize == sizeof(tagShutDownSocket));
+				tagShutDownSocket * pShutDownSocket = (tagShutDownSocket *)pData;
+
+				//获取对象
+				CTCPNetworkItem * pTCPNetworkItem = GetNetworkItem(pShutDownSocket->wIndex);
+				if (pTCPNetworkItem == NULL) return false;
+
+				//安全关闭
+				CWHDataLocker ThreadLock(pTCPNetworkItem->GetCriticalSection());
+				pTCPNetworkItem->ShutDownSocket(pShutDownSocket->wRountid);
+
+				return true;
+			}
+		case ASYNCHRONISM_ALLOW_BATCH:		//允许群发
+			{
+				//校验数据
+				ASSERT(wDataSize == sizeof(tagAllowBatchSend));
+				tagAllowBatchSend * pAllowBatchSend = (tagAllowBatchSend *)pData;
+
+				//获取对象
+				CTCPNetworkItem * pTCPNetworkItem = GetNetworkItem(pAllowBatchSend->wIndex);
+				if (pTCPNetworkItem == NULL) return false;
+
+				//设置群发
+				CWHDataLocker ThreadLock(pTCPNetworkItem->GetCriticalSection());
+				bool bAllowBatch = pAllowBatchSend->cbAllowBatch ? true : false;
+				pTCPNetworkItem->AllowBatchSend(pAllowBatchSend->wRountid, bAllowBatch, pAllowBatchSend->cbBatchMask);
+
+				return true;
+			}
+		case ASYNCHRONISM_CLOSE_SOCKET:		//关闭连接
+			{
+				//校验数据
+				ASSERT(wDataSize == sizeof(tagShutDownSocket));
+				tagShutDownSocket * pShutDownSocket = (tagShutDownSocket *)pData;
+
+				//获取对象
+				CTCPNetworkItem * pTCPNetworkItem = GetNetworkItem(pShutDownSocket->wIndex);
+				if (pTCPNetworkItem == NULL) return false;
+
+				//设置群发
+				CWHDataLocker ThreadLock(pTCPNetworkItem->GetCriticalSection());
+				pTCPNetworkItem->CloseSocket(pShutDownSocket->wRountid);
+
+				return true;
+			}
+		case ASYNCHRONISM_DETECT_SOCKET:	//检测连接
+			{
+				//获取活动项
+				CWHDataLocker ItemThreadLock(m_ItemLocked);
+				m_TempNetworkItemArray.Copy(m_NetworkItemActive);
+				ItemThreadLock.UnLock();
+
+				//检测连接
+				DWORD dwNowTime = (DWORD)time(NULL);
+				for (INT_PTR i = 0; i < m_TempNetworkItemArray.GetCount(); ++i)
+				{
+					//获取对象
+					CTCPNetworkItem * pTCPNetworkItem = m_TempNetworkItemArray[i];
+					CWHDataLocker ThreadLock(pTCPNetworkItem->GetCriticalSection());
+
+					//有效判断
+					if (pTCPNetworkItem->IsValidSocket() == false) continue;
+
+					//连接判断
+					if (pTCPNetworkItem->IsAllowSendData() == true)
+					{
+						switch (pTCPNetworkItem->m_wSurvivalTime)
+						{
+							case DEAD_QUOTIETY:		//死亡连接
+								{
+									pTCPNetworkItem->CloseSocket(pTCPNetworkItem->GetRountID());
+									break;
+								}
+							case DANGER_QUOTIETY:	//危险系数
+								{
+									pTCPNetworkItem->m_wSurvivalTime--;
+									pTCPNetworkItem->SendData(MDM_KN_COMMAND, SUB_KN_DETECT_SOCKET, pTCPNetworkItem->GetRountID());
+									break;
+								}
+							default:				//默认处理
+								{
+									pTCPNetworkItem->m_wSurvivalTime--;
+									break;
+								}
+						}
+					}
+					else	//特殊处理
+					{
+						if (pTCPNetworkItem->GetActiveTime() + 4 <= dwNowTime)
+						{
+							pTCPNetworkItem->CloseSocket(pTCPNetworkItem->GetRountID());
+							continue;
+						}
+					}
+				}
+
+				return true;
+			}
+	}
+
+	//效验数据
+	ASSERT(FALSE);
+
+	return false;
+}
+//绑定事件
+bool CTCPNetworkEngine::OnEventSocketBind(CTCPNetworkItem * pCTCPNetworkItem)
+{
+	//校验数据
+	ASSERT(pCTCPNetworkItem != NULL);
+	ASSERT(m_pITCPNetworkEngineEvent != NULL);
+
+	//投递消息
+	DWORD dwClientIP = pCTCPNetworkItem->GetClientIP();
+	DWORD dwSocketID = pCTCPNetworkItem->GetIdentifierID();
+	m_pITCPNetworkEngineEvent->OnEventTCPNetworkBind(dwSocketID, dwClientIP);
+
+	return true;
+}
+//关闭事件
+bool CTCPNetworkEngine::OnEventSocketShut(CTCPNetworkItem * pCTCPNetworkItem)
+{
+	//校验参数
+	ASSERT(pCTCPNetworkItem != NULL);
+	ASSERT(m_pITCPNetworkEngineEvent != NULL);
+
+	try
+	{
+		//投递数据
+		DWORD dwClientIP = pCTCPNetworkItem->GetClientIP();
+		DWORD dwSocketID = pCTCPNetworkItem->GetIdentifierID();
+		DWORD dwActiveTime = pCTCPNetworkItem->GetActiveTime();
+
+		m_pITCPNetworkEngineEvent->OnEventTCPNetworkShut(dwSocketID, dwClientIP, dwActiveTime);
+
+		//释放连接
+		FreeNetworkItem(pCTCPNetworkItem);
+	}
+	catch (...)
+	{
+
+	}
+
+	return true;
+}
+//读取事件
+bool CTCPNetworkEngine::OnEventSocketRead(TCP_Command Command, VOID *pData, WORD wDataSize, CTCPNetworkItem * pCTCPNetworkItem)
+{
+	//校验参数
+	ASSERT(pCTCPNetworkItem != NULL);
+	ASSERT(m_pITCPNetworkEngineEvent != NULL);
+
+	//运行判断
+	if (m_bNormalRun == false)
+	{
+		//创建对象
+		HANDLE hCompletionPort = NULL;
+		hCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);
+
+		//进入循环
+		while (true)
+		{
+			DWORD dwThancferred = 0;
+			OVERLAPPED * pOverLapped = NULL;
+			CTCPNetworkItem * pTCPNetworkItem = NULL;
+			GetQueuedCompletionStatus(hCompletionPort, &dwThancferred, (PULONG_PTR)&pTCPNetworkItem, &pOverLapped, INFINITE);
+		}
+
+		return false;
+	}
+
+	//投递消息
+	DWORD dwSocketID = pCTCPNetworkItem->GetIdentifierID();
+	m_pITCPNetworkEngineEvent->OnEventTCPNetworkRead(dwSocketID, Command, pData, wDataSize);
+
+	return true;
+}
+//检测连接
+bool CTCPNetworkEngine::DetectSocket()
+{
+	//发送请求
+	void * data = NULL;
+	return m_AsynchronismEngine.PostAsynchronismData(ASYNCHRONISM_DETECT_SOCKET, data, 0);
+}
+//网页验证
+bool CTCPNetworkEngine::WebAttestation()
+{
+	//跳过验证
+
+	//设置变量
+	m_bValidate = true;
+	m_bNormalRun = true;
+
+	return true;
+}
+//激活空闲对象
+CTCPNetworkItem * CTCPNetworkEngine::ActiveNetworkItem()
+{
+	//锁定队列
+	CWHDataLocker ThreadLock(m_ItemLocked, true);
+
+	//获取对象
+	CTCPNetworkItem * pTCPNetworkItem = NULL;
+	
+	if (m_NetworkItemBuffer.GetCount() > 0)
+	{
+		INT_PTR nItemPosition = m_NetworkItemBuffer.GetCount() - 1;
+		pTCPNetworkItem = m_NetworkItemBuffer[nItemPosition];
+		m_NetworkItemBuffer.RemoveAt(nItemPosition);
+		m_NetworkItemActive.Add(pTCPNetworkItem);
+	}
+
+	//创建对象
+	if (pTCPNetworkItem == NULL)
+	{
+		WORD wStorageCount = (WORD)m_NetworkItemStorage.GetCount();
+		if (wStorageCount < m_wMaxConnect)
+		{
+			try
+			{
+				//创建对象
+				pTCPNetworkItem = new CTCPNetworkItem(wStorageCount, this);
+				if (pTCPNetworkItem == NULL)
+				{
+					ASSERT(FALSE);
+					return NULL;
+				}
+
+				//插入数组
+				m_NetworkItemActive.Add(pTCPNetworkItem);
+				m_NetworkItemStorage.Add(pTCPNetworkItem);
+			}
+			catch (...)
+			{
+				ASSERT(FALSE);
+				return NULL;
+			}
+		}
+	}
+
+	return pTCPNetworkItem;
+}
+//获取对象
+CTCPNetworkItem * CTCPNetworkEngine::GetNetworkItem(WORD wIndex)
+{
+	//锁定队列
+	CWHDataLocker ThreadLock(m_ItemLocked, true);
+
+	//校验索引
+	ASSERT(wIndex < m_NetworkItemStorage.GetCount());
+	if (wIndex >= m_NetworkItemStorage.GetCount()) return NULL;
+
+	//获取对象
+	CTCPNetworkItem * pTCPNetworkItem = m_NetworkItemStorage[wIndex];
+
+	return pTCPNetworkItem;
+}
+//释放连接对象
+bool CTCPNetworkEngine::FreeNetworkItem(CTCPNetworkItem * pTCPNetworkItem)
+{
+	//校验参数
+	ASSERT(pTCPNetworkItem != NULL);
+
+	//锁定队列
+	CWHDataLocker ThreadLock(m_ItemLocked, true);
+	INT_PTR nActiveCount = m_NetworkItemActive.GetCount();
+	for (INT i = 0; i < nActiveCount; ++i)
+	{
+		if (pTCPNetworkItem == m_NetworkItemActive[i])
+		{
+			m_NetworkItemActive.RemoveAt(i);
+			m_NetworkItemBuffer.Add(pTCPNetworkItem);
+			return true;
+		}
+	}
+
+	//释放失败
+	ASSERT(FALSE);
+
+	return false;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+
+//组件创建函数
+DECLARE_CREATE_MODULE(TCPNetworkEngine);
+
+//////////////////////////////////////////////////////////////////////////

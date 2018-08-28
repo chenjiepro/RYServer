@@ -30,6 +30,12 @@
     <ClInclude Include="AsynchronismEngine.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="TraceServiceManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="TraceService.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -42,6 +48,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="AsynchronismEngine.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TraceServiceManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TraceService.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
