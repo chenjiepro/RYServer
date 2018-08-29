@@ -1,0 +1,11 @@
+#ifndef WH_INI_DATA_HEAD_FILE
+#define WH_INI_DATA_HEAD_FILE
+
+#pragma once
+
+#include "ServiceCoreDll.h"
+
+//////////////////////////////////////////////////////////////////////////////////
+
+
+#endif
