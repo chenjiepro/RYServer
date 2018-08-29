@@ -116,8 +116,11 @@
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="ServiceCoreDll.h" />
+    <ClInclude Include="WHCommandLine.h" />
     <ClInclude Include="WHDataLocker.h" />
     <ClInclude Include="WHDataQueue.h" />
+    <ClInclude Include="WHEncrypt.h" />
+    <ClInclude Include="WHIniData.h" />
     <ClInclude Include="WHThread.h" />
   </ItemGroup>
   <ItemGroup>
@@ -127,8 +130,11 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_Unicode|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="WHCommandLine.cpp" />
     <ClCompile Include="WHDataLocker.cpp" />
     <ClCompile Include="WHDataQueue.cpp" />
+    <ClCompile Include="WHEncrypt.cpp" />
+    <ClCompile Include="WHIniData.cpp" />
     <ClCompile Include="WHThread.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

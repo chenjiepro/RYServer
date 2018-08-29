@@ -33,13 +33,14 @@ public:
 
 	//功能函数
 public:
+	//追踪信息
 	static bool TraceString(LPCTSTR pszString, enTraceLevel TraceLevel);
 };
 
 
 //////////////////////////////////////////////////////////////////////////////////
 
-//追踪服务
+//追踪服务控制
 class KERNEL_ENGINE_CLASS CTraceServiceControl : public CRichEditCtrl, public ITraceService
 {
 	//辅助变量
