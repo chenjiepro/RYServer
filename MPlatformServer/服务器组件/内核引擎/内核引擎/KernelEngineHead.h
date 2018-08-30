@@ -348,9 +348,9 @@ public:
 	//清除参数
 	virtual VOID ClearParameters() = NULL;
 	//获取参数
-	virtual VOID GetParameters(LPCTSTR pszParamName, CDBVarValue & DBVarValue) = NULL;
+	virtual VOID GetParameter(LPCTSTR pszParamName, CDBVarValue & DBVarValue) = NULL;
 	//插入参数
-	virtual VOID AddParameters(LPCTSTR pszName, DataTypeEnum Type, ParameterDirectionEnum Direction, LONG Size, CDBVarValue & DBVarValue) = NULL;
+	virtual VOID AddParameter(LPCTSTR pszName, DataTypeEnum Type, ParameterDirectionEnum Direction, LONG Size, CDBVarValue & DBVarValue) = NULL;
 
 	//控制接口
 public:
@@ -400,7 +400,7 @@ interface IDataBaseEngine : IServiceModule
 	//信息接口
 public:
 	//引擎负荷
-	//virtual bool GetBurthenInfo(tagBurthenInfo & BurthenInfo) = NULL;
+	virtual bool GetBurthenInfo(tagBurthenInfo & BurthenInfo) = NULL;
 
 	//配置接口
 public:
@@ -414,9 +414,9 @@ public:
 	//控制事件
 	virtual bool PostDataBaseControl(WORD wControlID, VOID * pData, WORD wDataSize) = NULL;
 	//请求事件
-	virtual bool PostDataBaseRequest(WORD wRequestID, WORD wControlID, VOID * pData, WORD wDataSize) = NULL;
+	virtual bool PostDataBaseRequest(WORD wRequestID, WORD dwContextID, VOID * pData, WORD wDataSize) = NULL;
 	//延期请求
-	virtual bool DeferDataBaseRequest(WORD wRequestID, WORD wControlID, VOID * pData, WORD wDataSize) = NULL;
+	virtual bool DeferDataBaseRequest(WORD wRequestID, WORD dwContextID, VOID * pData, WORD wDataSize) = NULL;
 };
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -437,7 +437,7 @@ public:
 	//启动事件
 	virtual bool OnDataBaseEngineStart(IUnknownEx * pIUnknownEx) = NULL;
 	//停止事件
-	virtual bool OnConcludeDataBaseEngine(IUnknownEx * pIUnknownEx) = NULL;
+	virtual bool OnDataBaseEngineConclude(IUnknownEx * pIUnknownEx) = NULL;
 
 	//内核事件
 public:

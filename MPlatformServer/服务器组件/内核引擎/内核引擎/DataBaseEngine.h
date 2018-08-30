@@ -67,7 +67,7 @@ protected:
 	//内核变量
 protected:
 	_CommandPtr							m_DBCommand;							//命令对象
-	_RecordPtr							m_DBRecordset;							//记录对象
+	_RecordsetPtr						m_DBRecordset;							//记录对象
 	_ConnectionPtr						m_DBConnection;							//数据对象
 
 	//函数定义
@@ -100,9 +100,9 @@ public:
 	//清除参数
 	virtual VOID ClearParameters() = NULL;
 	//获取参数
-	virtual VOID GetParameters(LPCTSTR pszParamName, CDBVarValue & DBVarValue) = NULL;
+	virtual VOID GetParameter(LPCTSTR pszParamName, CDBVarValue & DBVarValue) = NULL;
 	//插入参数
-	virtual VOID AddParameters(LPCTSTR pszName, DataTypeEnum Type, ParameterDirectionEnum Direction, LONG Size, CDBVarValue & DBVarValue) = NULL;
+	virtual VOID AddParameter(LPCTSTR pszName, DataTypeEnum Type, ParameterDirectionEnum Direction, LONG Size, CDBVarValue & DBVarValue) = NULL;
 
 	//控制接口
 public:
@@ -147,4 +147,76 @@ private:
 	VOID ConvertToSQLSyntax(LPCTSTR pszString, CString & strResult);
 	//错误处理
 	VOID OnSQLException(enSQLException SQLException, CComError * pComError);
+};
+
+
+//////////////////////////////////////////////////////////////////////////
+
+//数据库引擎类
+
+class CDataBaseEngine : public IDataBaseEngine, public IAsynchronismEngineSink
+{
+	//组件变量
+protected:
+	CCriticalSection						m_CriticalLocker;						//缓冲锁定
+	CAsynchronismEngine						m_AsynchronismEngine;					//异步引擎
+
+	//接口变量
+protected:
+	IDataBaseEngineSink *					m_pIDataBaseEngineSink;					//钩子接口
+
+	//辅助变量
+protected:
+	BYTE									m_cbBuffer[MAX_ASYNCHRONISM_DATA];		//临时对象
+
+	//函数定义
+public:
+	//构造函数
+	CDataBaseEngine();
+	//析构函数
+	virtual ~CDataBaseEngine();
+
+	//基础接口
+public:
+	//释放对象
+	virtual VOID Release(){ delete this; }
+	//接口查询
+	virtual VOID * QueryInterface(REFGUID Guid, DWORD dwQueryVer);
+
+	//服务接口
+public:
+	//启动服务
+	virtual bool StartService();
+	//停止服务
+	virtual bool ConcludeService();
+
+	//信息接口
+public:
+	//引擎负荷
+	virtual bool GetBurthenInfo(tagBurthenInfo & BurthenInfo);
+
+	//配置接口
+public:
+	//配置模块
+	virtual bool SetDataBaseEngineSink(IUnknownEx * pIUnknownEx);
+	//配置模块
+	virtual bool SetDataBaseEngineSink(IUnknownEx * pIUnknownEx[], WORD wSinkCount);
+
+	//请求控制
+public:
+	//控制事件
+	virtual bool PostDataBaseControl(WORD wControlID, VOID * pData, WORD wDataSize);
+	//请求事件
+	virtual bool PostDataBaseRequest(WORD wRequestID, WORD dwContextID, VOID * pData, WORD wDataSize);
+	//延期请求
+	virtual bool DeferDataBaseRequest(WORD wRequestID, WORD dwContextID, VOID * pData, WORD wDataSize);
+
+	//异步接口
+public:
+	//启动事件
+	virtual bool OnAsynchronismEngineStart();
+	//停止事件
+	virtual bool OnAsynchronismEngineConclude();
+	//异步数据
+	virtual bool OnAsynchronismEngineData(WORD wIdentifier, VOID *pData, WORD wDataSize);
 };
