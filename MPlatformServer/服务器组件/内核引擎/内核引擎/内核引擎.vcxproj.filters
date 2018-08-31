@@ -39,6 +39,15 @@
     <ClInclude Include="DataBaseEngine.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="DataBaseAide.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="TCPSocketService.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -60,6 +69,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="DataBaseEngine.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="DataBaseAide.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TCPSocketService.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

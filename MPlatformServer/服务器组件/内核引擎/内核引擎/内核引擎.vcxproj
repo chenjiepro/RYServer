@@ -115,15 +115,19 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsynchronismEngine.h" />
+    <ClInclude Include="DataBaseAide.h" />
     <ClInclude Include="DataBaseEngine.h" />
     <ClInclude Include="KernelEngineHead.h" />
+    <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="TCPNetworkEngin.h" />
+    <ClInclude Include="TCPSocketService.h" />
     <ClInclude Include="TraceService.h" />
     <ClInclude Include="TraceServiceManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AsynchronismEngine.cpp" />
+    <ClCompile Include="DataBaseAide.cpp" />
     <ClCompile Include="DataBaseEngine.cpp" />
     <ClCompile Include="KernelEngine.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -132,6 +136,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="TCPNetworkEngin.cpp" />
+    <ClCompile Include="TCPSocketService.cpp" />
     <ClCompile Include="TraceService.cpp" />
     <ClCompile Include="TraceServiceManager.cpp" />
   </ItemGroup>
