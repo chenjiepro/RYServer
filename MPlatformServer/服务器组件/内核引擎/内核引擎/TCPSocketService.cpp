@@ -390,55 +390,265 @@ VOID CTCPSocketServiceThread::AmortizeBuffer(VOID * pData, WORD wDataSize)
 //解密数据
 WORD CTCPSocketServiceThread::CrevasseBuffer(BYTE cbDataBuffer[], WORD wDataSize)
 {
+	//检验参数
+	ASSERT(wDataSize >= sizeof(TCP_Head));
+	ASSERT(((TCP_Head*)cbDataBuffer)->TCPInfo.wPacketSize == wDataSize);
 
+	//校验码与字节映射
+	TCP_Head * pHead = (TCP_Head *)cbDataBuffer;
+	for (int i = sizeof(TCP_Info); i < wDataSize; ++i)
+	{
+		cbDataBuffer[i] = MapRecvByte(cbDataBuffer[i]);
+	}
+
+	return wDataSize;
 }
 //加密数据
 WORD CTCPSocketServiceThread::EncryptBuffer(BYTE cbDataBuffer[], WORD wDataSize, WORD wBufferSize)
 {
+	//校验参数
+	ASSERT(wDataSize >= sizeof(TCP_Head));
+	ASSERT(wBufferSize >= wDataSize + 2 * sizeof(DWORD));
+	ASSERT(wDataSize <= sizeof(TCP_Head) + SOCKET_TCP_BUFFER);
 
+	//填写信息头
+	TCP_Head * pHead = (TCP_Head *)cbDataBuffer;
+	pHead->TCPInfo.wPacketSize = wDataSize;
+	pHead->TCPInfo.cbDataKind = DK_MAPPED;
+
+	BYTE checkCode = 0;
+
+	for (WORD i = sizeof(TCP_Info); i < wDataSize; ++i)
+	{
+		checkCode += cbDataBuffer[i];
+		cbDataBuffer[i] = MapSendByte(cbDataBuffer[i]);
+	}
+	pHead->TCPInfo.cbCheckCode = ~checkCode + 1;
+
+	//设置变量
+	m_dwSendPacketCount++;
+
+	return wDataSize;
 }
 //网络消息
 LRESULT CTCPSocketServiceThread::OnSocketNotify(WPARAM wParam, LPARAM lParam)
 {
+	switch (WSAGETSELECTEVENT(lParam))
+	{
+		case FD_READ:		//读取消息
+			{
+				return OnSocketNotifyRead(wParam, lParam);
+			}
+		case FD_WRITE:		//网络发送
+			{
+				return OnSocketNotifyWrite(wParam, lParam);
+			}
+		case FD_CLOSE:		//网络关闭
+			{
+				return OnSocketNotifyClose(wParam, lParam);
+			}
+		case FD_CONNECT:	//网络连接
+			{
+				return OnSocketNotifyConnect(wParam, lParam);
+			}
+	}
 
+	return 0;
 }
 //请求消息
 LRESULT CTCPSocketServiceThread::OnServiceRequest(WPARAM wParam, LPARAM lParam)
 {
+	//变量定义
+	tagDataHead DataHead;
+	CWHDataLocker ThreadLock(m_CriticalSection);
+
+	//提取数据
+	BYTE cbBuffer[MAX_ASYNCHRONISM_DATA];
 
 }
 //网络读取
 LRESULT CTCPSocketServiceThread::OnSocketNotifyRead(WPARAM wParam, LPARAM lParam)
 {
+	try
+	{
+		//读取数据
+		INT iRetCode = recv(m_hSocket, (char *)m_cbRecvBuf + m_wRecvSize, sizeof(m_cbRecvBuf) - m_wRecvSize, 0);
+		if (iRetCode == SOCKET_ERROR) throw TEXT("网络连接关闭，读取数据失败");
 
+		ASSERT(m_dwSendPacketCount > 0);
+		m_wRecvSize += iRetCode;
+		m_dwRecvTickCount = GetTickCount() / 1000L;
+
+		//变量定义
+		WORD wPacketSize = 0;
+		BYTE cbDataBuffer[SOCKET_TCP_PACKET + sizeof(TCP_Head)];
+		TCP_Head * pHead = (TCP_Head *)m_cbRecvBuf;
+
+		while (m_dwBufferSize >= sizeof(TCP_Head))
+		{
+			//校验参数
+			wPacketSize = pHead->TCPInfo.wPacketSize;
+			ASSERT(pHead->TCPInfo.cbDataKind == DK_MAPPED);
+			ASSERT(wPacketSize <= (SOCKET_TCP_PACKET + sizeof(TCP_Head)));
+			if (pHead->TCPInfo.cbDataKind != DK_MAPPED) throw TEXT("数据包版本错误");
+			if (wPacketSize > (SOCKET_TCP_PACKET + sizeof(TCP_Head))) throw TEXT("数据包太大");
+			if (m_wRecvSize < wPacketSize) return 1;
+
+			//拷贝数据
+			m_dwRecvPacketCount++;
+			CopyMemory(cbDataBuffer, m_cbRecvBuf, wPacketSize);
+			m_wRecvSize -= wPacketSize;
+			MoveMemory(m_cbRecvBuf, m_cbRecvBuf + wPacketSize, m_wRecvSize);
+
+			//解密数据
+			WORD wRealySize = CrevasseBuffer(cbDataBuffer, wPacketSize);
+			ASSERT(wRealySize >= sizeof(TCP_Head));
+
+			//解释数据
+			WORD wDataSize = wRealySize - sizeof(TCP_Head);
+			VOID * pDataBuffer = cbDataBuffer + sizeof(TCP_Head);
+			TCP_Command Command = ((TCP_Head *)cbDataBuffer)->CommandInfo;
+
+			//内核数据
+			if (Command.wMainCmdID == MDM_KN_COMMAND)
+			{
+				switch (Command.wSubCmdID)
+				{
+					case SUB_KN_DETECT_SOCKET:
+						{
+							//回应数据
+							PerformSendData(MDM_KN_COMMAND, SUB_KN_DETECT_SOCKET);
+							break;
+						}
+					//case SUB_KN_SHUT_DOWN_SOCKET:	//中断连接
+					//	{
+					//		//中断连接
+					//		PerformCloseSocket(true); 
+
+					//		break;
+					//	}
+				}
+			}
+			else
+			{
+
+				//处理数据
+				CTCPSocketService * pTCPSocketStatusService = CONTAINING_RECORD(this, CTCPSocketService, m_TCPSocketServiceThread);
+				if (pTCPSocketStatusService->OnSocketRead(Command, pDataBuffer, wDataSize) == false) throw TEXT("网络数据包处理失败");
+			}
+		}
+	}
+	catch (...)
+	{
+		//关闭连接
+		PerformCloseSocket(true);
+	}
+
+	return 1;
 }
 //网络发送
 LRESULT CTCPSocketServiceThread::OnSocketNotifyWrite(WPARAM wParam, LPARAM lParam)
 {
+	//缓冲判断
+	if (m_bNeedBuffer == true && m_dwBufferData > 0)
+	{
+		//变量定义
+		DWORD dwTotalCount = 0;
+		DWORD dwPacketSize = 4096;
 
+		//设置变量
+		m_dwSendTickCount = GetTickCount() / 1000L;
+
+		//发送数据
+		while (dwTotalCount < m_dwBufferData)
+		{
+			WORD wSendSize = (WORD)__min(dwPacketSize, m_dwBufferData - dwTotalCount);
+			INT nSendCount = send(m_hSocket, (char*)m_pcbDataBuffer + dwTotalCount, wSendSize, 0);
+
+			//错误判断
+			if (nSendCount == SOCKET_ERROR)
+			{
+				//缓冲判断
+				if (WSAGetLastError() == WSAEWOULDBLOCK)
+				{
+					//设置变量
+					m_bNeedBuffer = false;
+					m_dwBufferData -= dwTotalCount;
+
+					//移动内存
+					if (m_dwBufferData > 0L)
+					{
+						m_bNeedBuffer = true;
+						MoveMemory(m_pcbDataBuffer, m_pcbDataBuffer + dwTotalCount, m_dwBufferData);
+					}
+
+					return 1L;
+				}
+				//关闭连接
+				PerformCloseSocket(SHUT_REASON_EXCEPTION);
+
+				return 1L;
+			}
+			//设置变量
+			dwTotalCount += nSendCount;
+		}
+		
+	}
+	//设置变量
+	m_dwBufferData = 0L;
+	m_bNeedBuffer = false;
+
+	return 1L;
 }
 //网络关闭
 LRESULT CTCPSocketServiceThread::OnSocketNotifyClose(WPARAM wParam, LPARAM lParam)
 {
+	//关闭连接
+	PerformCloseSocket(true);
 
+	return 1;
 }
 //网络连接
 LRESULT CTCPSocketServiceThread::OnSocketNotifyConnect(WPARAM wParam, LPARAM lParam)
 {
+	//获取错误
+	INT nErrorCode = WSAGETSELECTERROR(lParm);
 
+	//事件通知
+	//事件通知
+	CTCPSocketService * pTCPSocketStatusService = CONTAINING_RECORD(this, CTCPSocketService, m_TCPSocketServiceThread);
+	pTCPSocketStatusService->OnSocketLink(nErrorCode);
+
+	//关闭判断
+	if (nErrorCode != 0)
+	{
+		PerformCloseSocket(SHUT_REASON_INSIDE);
+		return 0;
+	}
+
+	//设置状态
+	m_TCPSocketStatus = SOCKET_STATUS_CONNECT;
+
+	return 1;
 }
 //随机映射
 WORD CTCPSocketServiceThread::SeedRandMap(WORD wSeed)
 {
-
+	DWORD dwHold = wSeed;
+	return (WORD)((dwHold = dwHold * 241103L + 2533101L) >> 16);
 }
 //发送映射
 BYTE CTCPSocketServiceThread::MapSendByte(BYTE cbData)
 {
-
+	BYTE cbMap;
+	cbMap = g_SendByteMap[cbData];
+	return cbMap;
 }
 //接收映射
 BYTE CTCPSocketServiceThread::MapRecvByte(BYTE cbData)
 {
 
+	BYTE cbMap;
+	cbMap = g_RecvByteMap[cbData];
+	return cbMap;
 }
