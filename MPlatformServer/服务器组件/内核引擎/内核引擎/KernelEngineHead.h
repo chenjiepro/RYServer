@@ -646,7 +646,7 @@ interface ITimerEngineEvent : public IUnknownEx
 {
 	//接口定义
 public:
-	//事件事件
+	//时间事件
 	virtual bool OnEventTimer(DWORD dwTimerID, WPARAM dwBindParameter) = NULL;
 };
 
@@ -738,7 +738,7 @@ public:
 	//关闭事件
 	virtual bool OnEventTCPNetworkShut(DWORD dwSocketID, DWORD dwClientAddr, DWORD dwActiveTime) = NULL;
 	//读取事件
-	virtual bool OnEventTCPNetworkRead(DWORD dwSocketID, TCP_Command Command, VOID * pData, DWORD dwDataSize) = NULL;
+	virtual bool OnEventTCPNetworkRead(DWORD dwSocketID, TCP_Command Command, VOID * pData, WORD wDataSize) = NULL;
 };
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -759,7 +759,7 @@ public:
 	//网络接口
 	virtual bool SetNetworkEngine(IUnknownEx * pIUnknownEx) = NULL;
 	//回调接口
-	virtual bool SetAttemperEngineSkin(IUnknownEx * pIUnknownEx) = NULL;
+	virtual bool SetAttemperEngineSink(IUnknownEx * pIUnknownEx) = NULL;
 
 	//控制事件
 public:
@@ -780,7 +780,7 @@ static const GUID IID_IAttemperEngineSink = { 0x831b9001, 0x4450, 0x45dd, 0x0091
 #endif
 
 //调度钩子
-interface IAttemperEngineSkin : public IUnknownEx
+interface IAttemperEngineSink : public IUnknownEx
 {
 	//异步接口
 public:

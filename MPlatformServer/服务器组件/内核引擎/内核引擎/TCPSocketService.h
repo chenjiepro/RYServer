@@ -123,4 +123,77 @@ private:
 
 //////////////////////////////////////////////////////////////////////////
 
+
+
+//网络服务
+class CTCPSocketService : public ITCPSocketService
+{
+	//友元说明
+	friend class CTCPSocketServiceThread;
+
+	//内核变量
+protected:
+	bool								m_bService;									//服务标志
+	WORD								m_wServiceID;								//服务标识
+	ITCPSocketEvent	*					m_pITCPSocketEvent;							//事件接口
+
+	//组件变量
+protected:
+	CTCPSocketServiceThread				m_TCPSocketServiceThread;					//网络线程
+
+	//函数定义
+public:
+	//构造函数
+	CTCPSocketService();
+	//析构函数
+	virtual ~CTCPSocketService();
+
+	//基础接口
+public:
+	//释放对象
+	virtual VOID Release(){ delete this; }
+	//接口查询
+	virtual VOID * QueryInterface(REFGUID Guid, DWORD dwQueryVer);
+
+	//服务接口
+public:
+	//启动服务
+	virtual bool StartService();
+	//停止服务
+	virtual bool ConcludeService();
+
+	//配置接口
+public:
+	//配置函数
+	virtual bool SetServiceID(WORD wServiceID);
+	//设置接口
+	virtual bool SetTCPSocketEvent(IUnknownEx * pIUnknownEx);
+
+	//功能接口
+public:
+	//关闭连接
+	virtual bool CloseSocket();
+	//连接地址
+	virtual bool Connect(DWORD dwServerIP, WORD wPort);
+	//连接地址
+	virtual bool Connect(LPCTSTR dwServerIP, WORD wPort);
+	//发送函数
+	virtual bool SendData(WORD wMainCmdID, WORD wSubCmdID);
+	//发送函数
+	virtual bool SendData(WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize);
+
+	//辅助函数
+protected:
+	//连接消息
+	bool OnSocketLink(INT nErrorCode);
+	//关闭消息
+	bool OnSocketShut(BYTE cbShutReason);
+	//读取消息
+	bool OnSocketRead(TCP_Command Command, VOID * pData, WORD wDataSize);
+
+	//内部函数
+private:
+	//地址解释
+	DWORD TranslateaAddress(LPCTSTR szServerIP);
+};
 #endif

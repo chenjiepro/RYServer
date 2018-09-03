@@ -43,11 +43,11 @@ bool CWHDataQueue::InsertData(WORD wIdentifier, VOID *pBuffer, WORD wDataSize)
 	ZeroMemory(&DataHead, sizeof(DataHead));
 
 	//设置变量
-	DataHead.wDataSzie = wDataSize;
+	DataHead.wDataSize = wDataSize;
 	DataHead.wIdentifier = wIdentifier;
 
 	//调整存储
-	if (RectifyBuffer(sizeof(DataHead) + DataHead.wDataSzie) == false)
+	if (RectifyBuffer(sizeof(DataHead) + DataHead.wDataSize) == false)
 	{
 		ASSERT(FALSE);
 		return false;
@@ -90,7 +90,7 @@ bool CWHDataQueue::InsertData(WORD wIdentifier, tagDataBuffer DataBuffer[], WORD
 	ZeroMemory(&DataHead, sizeof(DataHead));
 
 	//设置变量
-	DataHead.wDataSzie = 0;
+	DataHead.wDataSize = 0;
 	DataHead.wIdentifier = wIdentifier;
 
 	//累计大小
@@ -98,13 +98,13 @@ bool CWHDataQueue::InsertData(WORD wIdentifier, tagDataBuffer DataBuffer[], WORD
 	{
 		if (DataBuffer[i].wDataSize > 0)
 		{
-			DataHead.wDataSzie += DataBuffer[i].wDataSize;
+			DataHead.wDataSize += DataBuffer[i].wDataSize;
 
 		}
 	}
 
 	//调整存储
-	if (RectifyBuffer(sizeof(DataHead) + DataHead.wDataSzie) == false)
+	if (RectifyBuffer(sizeof(DataHead) + DataHead.wDataSize) == false)
 	{
 		ASSERT(FALSE);
 		return false;
@@ -117,7 +117,7 @@ bool CWHDataQueue::InsertData(WORD wIdentifier, tagDataBuffer DataBuffer[], WORD
 		CopyMemory(m_pDataQueueBuffer + m_dwInsertPos, &DataHead, sizeof(DataHead));
 
 		//附加数据
-		if (DataHead.wDataSzie > 0)
+		if (DataHead.wDataSize > 0)
 		{
 			//变量定义
 			WORD wExcursion = sizeof(DataHead);
@@ -140,8 +140,8 @@ bool CWHDataQueue::InsertData(WORD wIdentifier, tagDataBuffer DataBuffer[], WORD
 
 		//调整数据
 		m_dwDataPacketCount++;
-		m_dwDataSize += sizeof(DataHead) + DataHead.wDataSzie;
-		m_dwInsertPos += sizeof(DataHead) + DataHead.wDataSzie;
+		m_dwDataSize += sizeof(DataHead) + DataHead.wDataSize;
+		m_dwInsertPos += sizeof(DataHead) + DataHead.wDataSize;
 		m_dwTerminalPos == __max(m_dwTerminalPos, m_dwInsertPos);
 
 		return true;
@@ -194,25 +194,25 @@ bool CWHDataQueue::DistillData(tagDataHead & DataHead, VOID * pBuffer, WORD wBuf
 	//获取指针
 	ASSERT(m_dwBufferSize >= (m_dwDataQueryPos + sizeof(tagDataHead)));
 	tagDataHead * pDataHead = (tagDataHead *)(m_pDataQueueBuffer + m_dwDataQueryPos);
-	ASSERT(wBufferSize >= pDataHead->wDataSzie);
+	ASSERT(wBufferSize >= pDataHead->wDataSize);
 
 	//获取大小
-	WORD wPacketSize = sizeof(DataHead) + pDataHead->wDataSzie;
+	WORD wPacketSize = sizeof(DataHead) + pDataHead->wDataSize;
 	ASSERT(m_dwBufferSize >= (m_dwDataQueryPos + wPacketSize));
 
 	//判断缓冲
 	WORD wCopySize = 0;
-	ASSERT(wBufferSize >= pDataHead->wDataSzie);
-	if (wBufferSize >= pDataHead->wDataSzie) wCopySize = pDataHead->wDataSzie;
+	ASSERT(wBufferSize >= pDataHead->wDataSize);
+	if (wBufferSize >= pDataHead->wDataSize) wCopySize = pDataHead->wDataSize;
 
 	//拷贝数据
 	DataHead = *pDataHead;
-	if (DataHead.wDataSzie > 0)
+	if (DataHead.wDataSize > 0)
 	{
-		if (wBufferSize < pDataHead->wDataSzie)
-			DataHead.wDataSzie = 0;
+		if (wBufferSize < pDataHead->wDataSize)
+			DataHead.wDataSize = 0;
 		else
-			CopyMemory(pBuffer, pDataHead + 1, DataHead.wDataSzie);
+			CopyMemory(pBuffer, pDataHead + 1, DataHead.wDataSize);
 	}
 
 	//校验参数

@@ -115,6 +115,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsynchronismEngine.h" />
+    <ClInclude Include="AttemperEngine.h" />
     <ClInclude Include="DataBaseAide.h" />
     <ClInclude Include="DataBaseEngine.h" />
     <ClInclude Include="KernelEngineHead.h" />
@@ -127,6 +128,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AsynchronismEngine.cpp" />
+    <ClCompile Include="AttemperEngine.cpp" />
     <ClCompile Include="DataBaseAide.cpp" />
     <ClCompile Include="DataBaseEngine.cpp" />
     <ClCompile Include="KernelEngine.cpp" />

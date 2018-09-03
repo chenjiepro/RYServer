@@ -14,6 +14,28 @@
 #define REQUEST_SEND_DATA_EX		3									//请求发送
 #define REQUEST_CLOSE_SOCKET		4									//请求关闭
 
+//连接请求
+struct tagConnectRequest
+{
+	WORD							wPort;								//连接端口
+	DWORD							dwServerIP;							//连接地址
+};
+
+//发送请求
+struct tagSendDataRequest
+{
+	WORD							wMainCmdID;							//主命令码
+	WORD							wSubCmdID;							//子命令码
+};
+
+//发送请求
+struct tagSendDataExRequest
+{
+	WORD							wMainCmdID;							//主命令码
+	WORD							wSubCmdID;							//子命令码
+	WORD							wDataSize;							//数据大小
+	BYTE							cbSendBuffer[SOCKET_TCP_PACKET];	//发送缓冲
+};
 
 //构造函数
 CTCPSocketServiceThread::CTCPSocketServiceThread()
@@ -464,7 +486,57 @@ LRESULT CTCPSocketServiceThread::OnServiceRequest(WPARAM wParam, LPARAM lParam)
 
 	//提取数据
 	BYTE cbBuffer[MAX_ASYNCHRONISM_DATA];
+	if (m_DataQueue.DistillData(DataHead, cbBuffer, sizeof(cbBuffer)) == false) return 0;
 
+	//数据处理
+	switch (DataHead.wIdentifier)
+	{
+		case REQUEST_CONNECT:			//连接请求
+			{
+				//校验数据
+				ASSERT(DataHead.wDataSize == sizeof(tagConnectRequest));
+				tagConnectRequest * pConnectRequest = (tagConnectRequest *)cbBuffer;
+
+				if (PerformConnect(pConnectRequest->dwServerIP, pConnectRequest->wPort) != CONNECT_SUCCESS)
+				{
+					//事件通知
+					CTCPSocketService * pTCPSocketStatusService = CONTAINING_RECORD(this, CTCPSocketService, m_TCPSocketServiceThread);
+					pTCPSocketStatusService->OnSocketLink(WSAEADDRNOTAVAIL);
+				}
+			}
+		case REQUEST_SEND_DATA:			//发送请求
+			{
+				//校验数据
+				ASSERT(DataHead.wDataSize == sizeof(tagSendDataRequest));
+				tagSendDataRequest *pSendDataRequest = (tagSendDataRequest *)cbBuffer;
+
+				//数据处理
+				PerformSendData(pSendDataRequest->wMainCmdID, pSendDataRequest->wSubCmdID);
+
+				return 1;
+			}
+		case REQUEST_SEND_DATA_EX:		//发送请求
+			{
+				//校验数据
+				tagSendDataExRequest * pSendDataExRequest = (tagSendDataExRequest *)cbBuffer;
+				ASSERT(DataHead.wDataSize >= sizeof(tagSendDataExRequest) - sizeof(pSendDataExRequest->cbSendBuffer));
+				ASSERT(DataHead.wDataSize == (pSendDataExRequest->wDataSize + sizeof(tagSendDataExRequest) - sizeof(pSendDataExRequest->cbSendBuffer)));
+
+				//数据处理
+				PerformSendData(pSendDataExRequest->wMainCmdID, pSendDataExRequest->wSubCmdID, pSendDataExRequest->cbSendBuffer, pSendDataExRequest->wDataSize);
+
+				return 1;
+			}
+		case REQUEST_CLOSE_SOCKET:		//关闭请求
+			{
+				//关闭连接
+				PerformCloseSocket(true);
+
+				return 1;
+			}
+	}
+
+	return 0;
 }
 //网络读取
 LRESULT CTCPSocketServiceThread::OnSocketNotifyRead(WPARAM wParam, LPARAM lParam)
@@ -652,3 +724,215 @@ BYTE CTCPSocketServiceThread::MapRecvByte(BYTE cbData)
 	cbMap = g_RecvByteMap[cbData];
 	return cbMap;
 }
+
+
+//////////////////////////////////////////////////////////////////////////
+
+	//构造函数
+CTCPSocketService::CTCPSocketService()
+{
+	m_bService = false;
+	m_wServiceID = 0;
+	m_pITCPSocketEvent = NULL;
+
+	return;
+}
+	//析构函数
+CTCPSocketService::~CTCPSocketService()
+{
+	
+}
+	//接口查询
+VOID * CTCPSocketService::QueryInterface(REFGUID Guid, DWORD dwQueryVer)
+{
+	QUERYINTERFACE(IServiceModule, Guid, dwQueryVer);
+	QUERYINTERFACE(ITCPSocketService, Guid, dwQueryVer);
+	QUERYINTERFACE_IUNKNOWNEX(ITCPSocketService, Guid, dwQueryVer);
+
+	return NULL;
+}
+	//启动服务
+bool CTCPSocketService::StartService()
+{
+	//运行判断
+	ASSERT(m_bService == false && m_pITCPSocketEvent != NULL);
+	if (m_bService == true || m_pITCPSocketEvent == NULL) return false;
+
+	//服务线程
+	if (m_TCPSocketServiceThread.StartThread() == false) return false;
+
+	//设置变量
+	m_bService = true;
+
+	return true;
+}
+	//停止服务
+bool CTCPSocketService::ConcludeService()
+{
+	//设置变量
+	m_bService = false;
+
+	m_TCPSocketServiceThread.ConcludeThread(INFINITE);
+
+	return true;
+}
+	//配置函数
+bool CTCPSocketService::SetServiceID(WORD wServiceID)
+{
+	//状态校验
+	ASSERT(m_bService == false);
+	if (m_bService == true) return false;
+
+	//设置变量
+	m_wServiceID = wServiceID;
+
+	return true;
+}
+	//设置接口
+bool CTCPSocketService::SetTCPSocketEvent(IUnknownEx * pIUnknownEx)
+{
+	//状态校验
+	ASSERT(m_bService == false);
+	if (m_bService == true) return false;
+
+	//查询接口
+	m_pITCPSocketEvent = QUERY_OBJECT_PTR_INTERFACE(pIUnknownEx, ITCPSocketEvent);
+
+	//错误判断
+	if (m_pITCPSocketEvent == NULL)
+	{
+		ASSERT(FALSE);
+		return false;
+	}
+
+	return true;
+}
+	//关闭连接
+bool CTCPSocketService::CloseSocket()
+{
+	//状态校验
+	ASSERT(m_bService == true);
+	if (m_bService == false) return false;
+
+	//投递请求
+	return m_TCPSocketServiceThread.PostThreadRequest(REQUEST_CLOSE_SOCKET, NULL, 0);
+}
+	//连接地址
+bool CTCPSocketService::Connect(DWORD dwServerIP, WORD wPort)
+{
+	//状态校验
+	ASSERT(m_bService == true);
+	if (m_bService == false) return false;
+
+	//构造数据
+	tagConnectRequest ConnectRequest;
+	ZeroMemory(&ConnectRequest, sizeof(ConnectRequest));
+
+	ConnectRequest.dwServerIP = htonl(dwServerIP);
+	ConnectRequest.wPort = wPort;
+
+	//投递请求
+	return m_TCPSocketServiceThread.PostThreadRequest(REQUEST_CONNECT, &ConnectRequest, sizeof(ConnectRequest));
+}
+	//连接地址
+bool CTCPSocketService::Connect(LPCTSTR szServerIP, WORD wPort)
+{
+	//状态校验
+	ASSERT(m_bService == true);
+	if (m_bService == false) return false;
+
+	//构造数据
+	tagConnectRequest ConnectRequest;
+	ZeroMemory(&ConnectRequest, sizeof(ConnectRequest));
+
+	ConnectRequest.dwServerIP = TranslateaAddress(szServerIP);
+	ConnectRequest.wPort = wPort;
+
+	//投递请求
+	return m_TCPSocketServiceThread.PostThreadRequest(REQUEST_CONNECT, &ConnectRequest, sizeof(ConnectRequest));
+}
+	//发送函数
+bool CTCPSocketService::SendData(WORD wMainCmdID, WORD wSubCmdID)
+{
+	//状态校验
+	ASSERT(m_bService == true);
+	if (m_bService == false) return false;
+
+	//构造数据
+	tagSendDataRequest SendDataRequest;
+	ZeroMemory(&SendDataRequest, sizeof(SendDataRequest));
+
+	SendDataRequest.wMainCmdID = wMainCmdID;
+	SendDataRequest.wSubCmdID = wSubCmdID;
+
+	return m_TCPSocketServiceThread.PostThreadRequest(REQUEST_SEND_DATA, &SendDataRequest, sizeof(SendDataRequest));
+}
+	//发送函数
+bool CTCPSocketService::SendData(WORD wMainCmdID, WORD wSubCmdID, VOID * pData, WORD wDataSize)
+{
+	//状态校验
+	ASSERT(m_bService == true);
+	if (m_bService == false) return false;
+
+	//构造数据
+	tagSendDataExRequest SendDataExRequest;
+	ZeroMemory(&SendDataExRequest, sizeof(SendDataExRequest));
+
+	SendDataExRequest.wMainCmdID = wMainCmdID;
+	SendDataExRequest.wSubCmdID = wSubCmdID;
+	SendDataExRequest.wDataSize = wDataSize;
+
+	if (wDataSize > 0)
+	{
+		ASSERT(pData == NULL);
+		CopyMemory(SendDataExRequest.cbSendBuffer, pData, wDataSize);
+	}
+
+	//投递请求
+	WORD wSendSize = sizeof(SendDataExRequest) - sizeof(SendDataExRequest.cbSendBuffer) + wDataSize;
+	return m_TCPSocketServiceThread.PostThreadRequest(REQUEST_SEND_DATA_EX, &SendDataExRequest, wSendSize);
+}
+	//连接消息
+bool CTCPSocketService::OnSocketLink(INT nErrorCode)
+{
+	ASSERT(m_pITCPSocketEvent != NULL);
+	return m_pITCPSocketEvent->OnEventTCPSocketLink(m_wServiceID, nErrorCode);
+}
+	//关闭消息
+bool CTCPSocketService::OnSocketShut(BYTE cbShutReason)
+{
+	ASSERT(m_pITCPSocketEvent != NULL);
+	return m_pITCPSocketEvent->OnEventTCPSocketShut(m_wServiceID, cbShutReason);
+}
+	//读取消息
+bool CTCPSocketService::OnSocketRead(TCP_Command Command, VOID * pData, WORD wDataSize)
+{
+	ASSERT(m_pITCPSocketEvent != NULL);
+	return m_pITCPSocketEvent->OnEventTCPSocketRead(m_wServiceID, Command, pData, wDataSize);
+}
+	//地址解释
+DWORD CTCPSocketService::TranslateaAddress(LPCTSTR szServerIP)
+{
+	//转换地址
+	CT2CA ServerAddr(szServerIP);
+	DWORD dwServerIP = inet_addr(ServerAddr);
+
+	//域名解释
+	if (dwServerIP == INADDR_NONE)
+	{
+		LPHOSTENT lpHost = gethostbyname(ServerAddr);
+		if (lpHost == NULL) return INADDR_NONE;
+		dwServerIP = ((LPIN_ADDR)lpHost->h_addr)->s_addr;
+	}
+
+	return dwServerIP;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+
+//组件创建
+DECLARE_CREATE_MODULE(TCPSocketService);
+
+
+//////////////////////////////////////////////////////////////////////////

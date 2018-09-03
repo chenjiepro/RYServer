@@ -11,7 +11,7 @@
 //数据列头
 struct tagDataHead
 {
-	WORD						wDataSzie;						//数据大小
+	WORD						wDataSize;						//数据大小
 	WORD						wIdentifier;					//类型标识
 };
 
