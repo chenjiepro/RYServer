@@ -8,7 +8,7 @@
 CAttemperEngine::CAttemperEngine()
 {
 	m_pTCPNetworkEngine = NULL;
-	m_pIAttemperEngineSkin = NULL;
+	m_pIAttemperEngineSink = NULL;
 
 	ZeroMemory(m_cbBuffer, sizeof(m_cbBuffer));
 
@@ -37,8 +37,8 @@ VOID * CAttemperEngine::QueryInterface(REFGUID Guid, DWORD dwQueryVer)
 bool CAttemperEngine::StartService()
 {
 	//校验参数
-	ASSERT(m_pIAttemperEngineSkin != NULL && m_pTCPNetworkEngine != NULL);
-	if (m_pIAttemperEngineSkin == NULL || m_pTCPNetworkEngine == NULL) return false;
+	ASSERT(m_pIAttemperEngineSink != NULL && m_pTCPNetworkEngine != NULL);
+	if (m_pIAttemperEngineSink == NULL || m_pTCPNetworkEngine == NULL) return false;
 
 	//注册对象
 	IUnknownEx * pIAsynchronismEngineSink = QUERY_ME_INTERFACE(IUnknownEx);
@@ -85,13 +85,13 @@ bool CAttemperEngine::SetAttemperEngineSink(IUnknownEx * pIUnknownEx)
 	{
 		//查询接口
 		ASSERT(QUERY_OBJECT_PTR_INTERFACE(pIUnknownEx, IAttemperEngineSink) != NULL);
-		m_pIAttemperEngineSkin = QUERY_OBJECT_PTR_INTERFACE(pIUnknownEx, IAttemperEngineSink);
+		m_pIAttemperEngineSink = QUERY_OBJECT_PTR_INTERFACE(pIUnknownEx, IAttemperEngineSink);
 
 		//成功判断
-		if (m_pIAttemperEngineSkin == NULL) return false;
+		if (m_pIAttemperEngineSink == NULL) return false;
 	}
 	else
-		m_pIAttemperEngineSkin = NULL;
+		m_pIAttemperEngineSink = NULL;
 
 	return true;
 }
@@ -277,11 +277,11 @@ bool CAttemperEngine::OnEventTCPNetworkRead(DWORD dwSocketID, TCP_Command Comman
 bool CAttemperEngine::OnAsynchronismEngineStart()
 {
 	//校验参数
-	ASSERT(m_pIAttemperEngineSkin != NULL);
-	if (m_pIAttemperEngineSkin == NULL) return false;
+	ASSERT(m_pIAttemperEngineSink != NULL);
+	if (m_pIAttemperEngineSink == NULL) return false;
 
 	//启动通知
-	if (m_pIAttemperEngineSkin->OnAttemperEngineStart(QUERY_ME_INTERFACE(IUnknownEx)) == false)
+	if (m_pIAttemperEngineSink->OnAttemperEngineStart(QUERY_ME_INTERFACE(IUnknownEx)) == false)
 	{
 		ASSERT(FALSE);
 		return false;
@@ -293,11 +293,11 @@ bool CAttemperEngine::OnAsynchronismEngineStart()
 bool CAttemperEngine::OnAsynchronismEngineConclude()
 {
 	//校验参数
-	ASSERT(m_pIAttemperEngineSkin != NULL);
-	if (m_pIAttemperEngineSkin == NULL) return false;
+	ASSERT(m_pIAttemperEngineSink != NULL);
+	if (m_pIAttemperEngineSink == NULL) return false;
 
 	//启动通知
-	if (m_pIAttemperEngineSkin->OnAttemperEngineConclude(QUERY_ME_INTERFACE(IUnknownEx)) == false)
+	if (m_pIAttemperEngineSink->OnAttemperEngineConclude(QUERY_ME_INTERFACE(IUnknownEx)) == false)
 	{
 		ASSERT(FALSE);
 		return false;
@@ -309,7 +309,7 @@ bool CAttemperEngine::OnAsynchronismEngineConclude()
 bool CAttemperEngine::OnAsynchronismEngineData(WORD wIdentifier, VOID *pData, WORD wDataSize)
 {
 	//校验参数
-	ASSERT(m_pIAttemperEngineSkin != NULL);
+	ASSERT(m_pIAttemperEngineSink != NULL);
 	ASSERT(m_pTCPNetworkEngine != NULL);
 
 	//内核事件
@@ -323,7 +323,7 @@ bool CAttemperEngine::OnAsynchronismEngineData(WORD wIdentifier, VOID *pData, WO
 
 				//处理消息
 				NTY_TimerEvent * pTimerEvent = (NTY_TimerEvent *)pData;
-				m_pIAttemperEngineSkin->OnEventTimer(pTimerEvent->dwTimerID, pTimerEvent->dwBindParameter);
+				m_pIAttemperEngineSink->OnEventTimer(pTimerEvent->dwTimerID, pTimerEvent->dwBindParameter);
 
 				return true;
 			}
@@ -335,7 +335,7 @@ bool CAttemperEngine::OnAsynchronismEngineData(WORD wIdentifier, VOID *pData, WO
 
 				//处理消息
 				NTY_ControlEvent * pControlEvent = (NTY_ControlEvent *)pData;
-				m_pIAttemperEngineSkin->OnEventControl(pControlEvent->wControlID, pControlEvent + 1, wDataSize - sizeof(NTY_ControlEvent));
+				m_pIAttemperEngineSink->OnEventControl(pControlEvent->wControlID, pControlEvent + 1, wDataSize - sizeof(NTY_ControlEvent));
 
 				return true;
 			}
@@ -347,7 +347,7 @@ bool CAttemperEngine::OnAsynchronismEngineData(WORD wIdentifier, VOID *pData, WO
 
 				//处理消息
 				NTY_DataBaseEvent * pDataBaseEvent = (NTY_DataBaseEvent *)pData;
-				m_pIAttemperEngineSkin->OnEventDataBase(pDataBaseEvent->wRequestID, pDataBaseEvent->dwContextID, pDataBaseEvent + 1, wDataSize - sizeof(NTY_DataBaseEvent));
+				m_pIAttemperEngineSink->OnEventDataBase(pDataBaseEvent->wRequestID, pDataBaseEvent->dwContextID, pDataBaseEvent + 1, wDataSize - sizeof(NTY_DataBaseEvent));
 
 				return true;
 			}
@@ -362,29 +362,119 @@ bool CAttemperEngine::OnAsynchronismEngineData(WORD wIdentifier, VOID *pData, WO
 				if (wDataSize < sizeof(NTY_TCPSocketReadEvent)) return false;
 				if (wDataSize != sizeof(NTY_TCPSocketReadEvent) + pSocketReadEvent->wDataSize) return false;
 
-				m_pIAttemperEngineSkin->OnEventTCPSocketRead(pSocketReadEvent->wServiceID, pSocketReadEvent->Command, pSocketReadEvent + 1, pSocketReadEvent->wDataSize);
+				m_pIAttemperEngineSink->OnEventTCPSocketRead(pSocketReadEvent->wServiceID, pSocketReadEvent->Command, pSocketReadEvent + 1, pSocketReadEvent->wDataSize);
 
 				return true;
 			}
 		case EVENT_TCP_SOCKET_SHUT:
 			{
+				//大小断言
+				ASSERT(wDataSize == sizeof(NTY_TCPSocketShutEvent));
+				if (wDataSize != sizeof(NTY_TCPSocketShutEvent)) return false;
 
+				//处理消息
+				NTY_TCPSocketShutEvent * pSocketShutEvent = (NTY_TCPSocketShutEvent *)pData;
+				m_pIAttemperEngineSink->OnEventTCPSocketShut(pSocketShutEvent->wServiceID, pSocketShutEvent->cbShutReason);
+
+				return true;
 			}
 		case EVENT_TCP_SOCKET_LINK:
 			{
+				//大小断言
+				ASSERT(wDataSize == sizeof(NTY_TCPSocketLinkEvent));
+				if (wDataSize != sizeof(NTY_TCPSocketLinkEvent)) return false;
 
+				//处理消息
+				NTY_TCPSocketLinkEvent * pSocketLinkEvent = (NTY_TCPSocketLinkEvent *)pData;
+				m_pIAttemperEngineSink->OnEventTCPSocketLink(pSocketLinkEvent->wServiceID, pSocketLinkEvent->nErrorCode);
+
+				return true;
 			}
 		case EVENT_TCP_NETWORK_ACCEPT:
 			{
+				//大小断言
+				ASSERT(wDataSize == sizeof(NTY_TCPNetworkAcceptEvent));
+				if (wDataSize != sizeof(NTY_TCPNetworkAcceptEvent)) return false;
 
+				//变量定义
+				bool bSuccess = false;
+				NTY_TCPNetworkAcceptEvent * pNetworkAcceptEvent = (NTY_TCPNetworkAcceptEvent *)pData;
+
+				//消息处理
+				try
+				{
+					bSuccess = m_pIAttemperEngineSink->OnEventTCPNetworkBind(pNetworkAcceptEvent->dwClientAddr, pNetworkAcceptEvent->dwSocketID);
+				}
+				catch (...)
+				{
+
+				}
+
+				//失败处理
+				if (bSuccess == false) m_pTCPNetworkEngine->CloseSocket(pNetworkAcceptEvent->dwSocketID);
+
+				return true;
 			}
 		case EVENT_TCP_NETWORK_READ:
 			{
+				//校验大小
+				NTY_TCPNetworkReadEvent * pReadEvent = (NTY_TCPNetworkReadEvent *)pData;
 
+				//大小断言
+				ASSERT(wDataSize >= sizeof(NTY_TCPNetworkReadEvent));
+				ASSERT(wDataSize == sizeof(NTY_TCPNetworkReadEvent) + pReadEvent->wDataSize);
+
+				//大小校验
+				if (wDataSize < sizeof(NTY_TCPNetworkReadEvent))
+				{
+					m_pTCPNetworkEngine->CloseSocket(pReadEvent->dwSocketID);
+					return false;
+				}
+
+				if (wDataSize != sizeof(NTY_TCPNetworkReadEvent) + pReadEvent->wDataSize)
+				{
+					m_pTCPNetworkEngine->CloseSocket(pReadEvent->dwSocketID);
+					return false;
+				}
+
+				//消息处理
+				bool bSuccess = false;
+
+				try
+				{
+					bSuccess = m_pIAttemperEngineSink->OnEventTCPNetworkRead(pReadEvent->dwSocketID, pReadEvent->Command, pReadEvent + 1, pReadEvent->wDataSize);
+				}
+				catch (...)
+				{
+				}
+
+				if (bSuccess == false)
+					m_pTCPNetworkEngine->CloseSocket(pReadEvent->dwSocketID);
+
+				return true;
 			}
 		case EVENT_TCP_NETWORK_SHUT:
 			{
+				//大小断言
+				ASSERT(wDataSize == sizeof(NTY_TCPNetworkShutEvent));
+				if (wDataSize != sizeof(NTY_TCPNetworkShutEvent)) return false;
 
+				//处理消息
+				NTY_TCPNetworkShutEvent * pCloseEvent = (NTY_TCPNetworkShutEvent *)pData;
+				m_pIAttemperEngineSink->OnEventTCPNetworkShut(pCloseEvent->dwClientAddr, pCloseEvent->dwActiveTime, pCloseEvent->dwSocketID);
+
+				return true;
 			}
 	}
+
+	//其他事件
+	return m_pIAttemperEngineSink->OnEventAttemperData(wIdentifier, pData, wDataSize);
 }
+
+
+//////////////////////////////////////////////////////////////////////////
+
+//组件创建函数
+DECLARE_CREATE_MODULE(AttemperEngine);
+
+//////////////////////////////////////////////////////////////////////////

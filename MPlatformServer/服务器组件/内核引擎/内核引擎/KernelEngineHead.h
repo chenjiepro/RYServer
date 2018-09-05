@@ -624,7 +624,7 @@ public:
 	//设置定时器
 	virtual bool SetTimer(DWORD dwTimerID, DWORD dwElapse, DWORD dwRepeat, WPARAM dwBindParameter) = NULL;
 	//设置定时器
-	virtual bool SetTimer(DWORD dwTimerID) = NULL;
+	virtual bool SetTimerCell(DWORD dwTimerID) = NULL;
 	//删除定时器
 	virtual bool KillTimer(DWORD dwTimerID) = NULL;
 	//删除所有定时器

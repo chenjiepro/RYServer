@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServiceCoreDll", "服务器
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "内核引擎", "服务器组件\内核引擎\内核引擎\内核引擎.vcxproj", "{16FA6928-0066-44FD-82EC-F98FF23EF302}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Correspond", "服务器组件\协调服务器\Correspond\Correspond.vcxproj", "{C6419925-34E7-4931-904F-3DBB7B7A0139}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug_Unicode|Win32 = Debug_Unicode|Win32
@@ -26,6 +28,12 @@ Global
 		{16FA6928-0066-44FD-82EC-F98FF23EF302}.Debug|Win32.Build.0 = Debug|Win32
 		{16FA6928-0066-44FD-82EC-F98FF23EF302}.Release|Win32.ActiveCfg = Release|Win32
 		{16FA6928-0066-44FD-82EC-F98FF23EF302}.Release|Win32.Build.0 = Release|Win32
+		{C6419925-34E7-4931-904F-3DBB7B7A0139}.Debug_Unicode|Win32.ActiveCfg = Debug|Win32
+		{C6419925-34E7-4931-904F-3DBB7B7A0139}.Debug_Unicode|Win32.Build.0 = Debug|Win32
+		{C6419925-34E7-4931-904F-3DBB7B7A0139}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C6419925-34E7-4931-904F-3DBB7B7A0139}.Debug|Win32.Build.0 = Debug|Win32
+		{C6419925-34E7-4931-904F-3DBB7B7A0139}.Release|Win32.ActiveCfg = Release|Win32
+		{C6419925-34E7-4931-904F-3DBB7B7A0139}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

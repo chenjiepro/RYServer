@@ -114,6 +114,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="ServiceCoreDll.h" />
     <ClInclude Include="WHCommandLine.h" />
@@ -121,6 +122,9 @@
     <ClInclude Include="WHDataQueue.h" />
     <ClInclude Include="WHEncrypt.h" />
     <ClInclude Include="WHIniData.h" />
+    <ClInclude Include="WHMD5CheckSum.h" />
+    <ClInclude Include="WHRegKey.h" />
+    <ClInclude Include="WHService.h" />
     <ClInclude Include="WHThread.h" />
   </ItemGroup>
   <ItemGroup>
@@ -135,6 +139,9 @@
     <ClCompile Include="WHDataQueue.cpp" />
     <ClCompile Include="WHEncrypt.cpp" />
     <ClCompile Include="WHIniData.cpp" />
+    <ClCompile Include="WHMD5CheckSum.cpp" />
+    <ClCompile Include="WHRegKey.cpp" />
+    <ClCompile Include="WHService.cpp" />
     <ClCompile Include="WHThread.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

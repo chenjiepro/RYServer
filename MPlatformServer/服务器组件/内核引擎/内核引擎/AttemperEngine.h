@@ -21,7 +21,7 @@ protected:
 	//接口变量
 protected:
 	ITCPNetworkEngine *							m_pTCPNetworkEngine;						//网络接口
-	IAttemperEngineSink *						m_pIAttemperEngineSkin;						//钩子接口
+	IAttemperEngineSink *						m_pIAttemperEngineSink;						//钩子接口
 
 	//辅助变量
 protected:

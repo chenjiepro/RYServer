@@ -42,6 +42,18 @@
     <ClInclude Include="WHIniData.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="WHMD5CheckSum.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="WHRegKey.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="WHService.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -66,6 +78,15 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="WHIniData.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="WHMD5CheckSum.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="WHRegKey.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="WHService.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
